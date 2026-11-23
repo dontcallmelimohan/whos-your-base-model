@@ -186,3 +186,86 @@ GET /api/galaxy/point?model_id=
 ```
 
 返回预计算坐标，前端不算布局。由工作包 C 定义后补进本节。
+
+## 7. 依赖发现与核验（模块 3）
+
+### POST /api/extractions
+
+对指定快照跑规则抽取。请求：
+
+```json
+{ "snapshot_id": "demo-2026-11", "source": "fixtures" }
+```
+
+返回：
+
+```json
+{ "snapshot_id": "demo-2026-11", "source": "fixtures", "scanned_models": 4,
+  "created_candidates": 2, "created_evidence": 2, "skipped_declared": 3 }
+```
+
+重复运行不产生重复记录；`skipped_declared` 是「正文提到的上游已在声明里」的反例计数。
+
+### GET /api/candidates?snapshot_id=&status=&page=&page_size=
+
+`status` 取 `pending` / `confirmed` / `rejected` / `unknown`，不传则全部。
+
+```json
+{ "items": [{ "relation_id": "rel_ab12", "parent_id": "Qwen/Qwen2.5-7B-Instruct",
+              "child_id": "someone/Merge-7B", "relation_type": "merge",
+              "origin": "candidate", "status": "pending",
+              "source_field": "r_merge_from", "evidence_count": 1 }],
+  "total": 2, "page": 1, "page_size": 20 }
+```
+
+### GET /api/relations/{relation_id}
+
+```json
+{ "relation": { "...": "同上" },
+  "evidence": [{ "id": "ev_1", "source_type": "model_card_text",
+                 "source_path": "README.md", "locator": "L3",
+                 "quote": "This model is a merge of …", "revision": null }],
+  "reviews": [{ "id": 1, "decision": "confirmed", "note": "原文明确",
+                "reviewer": null, "created_at": "2026-11-23 11:20:00" }] }
+```
+
+`revision` 为空表示「仅有数据快照」，页面不能写成文件提交版本。
+
+### POST /api/relations/{relation_id}/reviews
+
+```json
+{ "decision": "confirmed", "note": "README 原文明确" }
+```
+
+- 只允许核验 `origin=candidate` 的关系，声明关系返回 400；
+- 核验记录**追加**，最新一条决定 `status`；
+- 返回更新后的 `RelationDetail`。
+
+## 8. 对比与导出（模块 4）
+
+### GET /api/analysis?view=declared|completed
+
+`declared` 只看模型卡声明；`completed` 额外包含 `status=confirmed` 的候选。
+
+### GET /api/diff?snapshot_id=
+
+```json
+{ "snapshot_id": "demo-2026-11", "rule_version": "rules-v2",
+  "added_edges": [{ "relation_id": "rel_ab12", "parent_id": "Qwen/Qwen2.5-7B-Instruct",
+                    "child_id": "someone/Merge-7B", "relation_type": "merge",
+                    "status": "confirmed" }],
+  "pending_count": 1,
+  "metrics": { "edge_count": { "declared": 12, "completed": 13, "delta": 1 } } }
+```
+
+固定返回 `edge_count`、`unique_pair_count`、`parent_count`、`hhi_scaled`、`top10_share` 五项。
+
+### GET /api/analysis/export.csv?snapshot_id=&view=
+
+`text/csv`，首部是 `#` 注释行（快照、视图、规则版本、计数），随后是：
+
+```text
+rank,model_id,family,direct,total,share_of_edges
+```
+
+导出内容必须能凭注释行复算，不能只给数字。

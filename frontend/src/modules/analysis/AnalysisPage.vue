@@ -11,15 +11,19 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { errorText } from '@/shared/api'
-import type { AnalysisResponse } from '@/shared/types'
+import type { AnalysisResponse, DiffResponse, Snapshot } from '@/shared/types'
 
-import { fetchAnalysis } from './api'
+import { exportCsvUrl, fetchAnalysis, fetchDiff, fetchSnapshots } from './api'
 
 type Tab = 'upstream' | 'family'
 type Metric = 'direct' | 'total'
 
 const router = useRouter()
 const data = ref<AnalysisResponse | null>(null)
+const diff = ref<DiffResponse | null>(null)
+const view = ref<'declared' | 'completed'>('declared')
+const snapshotId = ref('')
+const snapshots = ref<Snapshot[]>([])
 const loading = ref(false)
 const error = ref('')
 
@@ -75,7 +79,8 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    data.value = await fetchAnalysis()
+    data.value = await fetchAnalysis(snapshotId.value || undefined)
+    diff.value = await fetchDiff(snapshotId.value || undefined)
   } catch (err) {
     error.value = errorText(err)
   } finally {
@@ -83,7 +88,15 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  try {
+    snapshots.value = (await fetchSnapshots()).items
+    snapshotId.value = snapshots.value[0]?.id ?? ''
+  } catch {
+    /* 忽略，用默认快照 */
+  }
+  await load()
+})
 </script>
 
 <template>
@@ -111,6 +124,14 @@ onMounted(load)
     <div v-if="!data && loading" class="panel muted small">正在计算…</div>
 
     <template v-if="data">
+      <div class="row" style="justify-content: flex-end; gap: 10px; margin-bottom: 14px">
+        <span class="muted small">数据版本</span>
+        <select v-if="snapshots.length" v-model="snapshotId" @change="load">
+          <option v-for="item in snapshots" :key="item.id" :value="item.id">{{ item.id }}</option>
+        </select>
+        <span v-else class="badge">{{ data.snapshot_id }}</span>
+      </div>
+
       <div class="analysis-body">
         <!-- 左：筛选与口径 -->
         <aside class="filter-panel">
@@ -295,6 +316,61 @@ onMounted(load)
             </div>
             <p class="faint small" style="margin: 14px 0 0">
               按带类型的关系条数计，与上方的「唯一上下游对」是两个口径。
+            </p>
+          </div>
+
+          <!-- 补全前后对比 -->
+          <div v-if="diff" class="panel">
+            <div class="row" style="justify-content: space-between; margin-bottom: 14px">
+              <h2 style="margin: 0">补全前后对比</h2>
+              <div class="row">
+                <a class="chip" :href="exportCsvUrl('declared')" download>导出 CSV · 声明图</a>
+                <a class="chip" :href="exportCsvUrl('completed')" download>导出 CSV · 补全图</a>
+              </div>
+            </div>
+
+            <div class="diff-grid">
+              <div v-for="(metric, name) in diff.metrics" :key="name" class="diff-cell">
+                <div class="label">{{ name }}</div>
+                <div class="values">
+                  {{ metric.declared }} → {{ metric.completed }}
+                  <span :class="metric.delta ? 'delta-up' : 'delta-flat'">
+                    ({{ metric.delta > 0 ? '+' : '' }}{{ metric.delta }})
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p v-if="!diff.added_edges.length" class="muted small" style="margin: 0">
+              还没有核验通过的关系。去「核验」页确认一条候选，这里会出现新增的边。
+            </p>
+            <table v-else class="rank-table">
+              <thead>
+                <tr>
+                  <th>新增边</th>
+                  <th style="width: 96px">类型</th>
+                  <th style="width: 80px">状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="edge in diff.added_edges"
+                  :key="edge.relation_id"
+                  class="row-click"
+                  @click="openInLineage(edge.child_id)"
+                >
+                  <td>
+                    <code class="model-id">{{ edge.parent_id }} → {{ edge.child_id }}</code>
+                  </td>
+                  <td class="muted">{{ edge.relation_type }}</td>
+                  <td><span class="badge badge-ok">{{ edge.status }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p class="faint small" style="margin: 14px 0 0">
+              声明图 = 模型卡字段里写的关系；补全图 = 声明 + 核验通过。待核验
+              {{ diff.pending_count }} 条。
             </p>
           </div>
 

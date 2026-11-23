@@ -24,6 +24,7 @@ export interface GraphEdge {
 export interface GraphResponse {
   snapshot_id: string
   root: string
+  view: 'declared' | 'completed'
   direction: Direction
   depth: number
   nodes: GraphNode[]
@@ -40,6 +41,7 @@ export const fetchGraph = (params: {
   depth?: number
   relation_type?: string
   limit?: number
+  view?: 'declared' | 'completed'
 }) => api<GraphResponse>(`/api/graph${buildQuery(params)}`)
 
 export const searchModels = (q: string) =>

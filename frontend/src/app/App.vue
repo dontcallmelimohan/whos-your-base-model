@@ -31,9 +31,10 @@ onMounted(refresh)
 
       <nav class="nav">
         <RouterLink to="/data">数据管理</RouterLink>
-        <RouterLink to="/catalog">模型目录</RouterLink>
-        <RouterLink to="/lineage">供应链小图</RouterLink>
-        <RouterLink to="/galaxy">大图 Galaxy</RouterLink>
+        <RouterLink to="/catalog">目录</RouterLink>
+        <RouterLink to="/lineage">谱系</RouterLink>
+        <RouterLink to="/evidence">核验</RouterLink>
+        <RouterLink to="/galaxy">大图</RouterLink>
         <RouterLink to="/analysis">生态分析</RouterLink>
       </nav>
 

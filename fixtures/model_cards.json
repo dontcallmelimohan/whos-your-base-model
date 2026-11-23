@@ -1,0 +1,25 @@
+{
+  "_comment": "规则抽取的输入样例。前两条能产出「声明里没有」的候选，后两条是故意放的反例（正文提到的上游已在声明中）。",
+  "cards": [
+    {
+      "model_id": "someone/Merge-7B",
+      "path": "README.md",
+      "text": "# Merge-7B\n\nThis model is a merge of Qwen/Qwen2.5-Coder-7B and Qwen/Qwen2.5-7B-Instruct, produced with mergekit.\nWe also mixed in weights from Qwen/Qwen2.5-7B to improve Chinese ability.\n\n## Usage\n\nLoad it like any other causal LM."
+    },
+    {
+      "model_id": "someone/bloom-finetune",
+      "path": "README.md",
+      "text": "# bloom-finetune\n\nThis model was fine-tuned from bigscience/bloom-7b1 on an internal instruction set.\nIt keeps the original OpenRAIL license.\n\n## Training\n\n3 epochs, batch size 32."
+    },
+    {
+      "model_id": "unsloth/Llama-3.2-1B-Instruct",
+      "path": "README.md",
+      "text": "# Llama-3.2-1B-Instruct (unsloth)\n\nThis model was fine-tuned from meta-llama/Llama-3.2-1B-Instruct on a small instruction set.\n\nIt keeps the original license."
+    },
+    {
+      "model_id": "someone/lora-adapter-qwen",
+      "path": "README.md",
+      "text": "# LoRA adapter\n\nA LoRA adapter for Qwen/Qwen2.5-7B trained on internal data.\nMerge it with peft before use."
+    }
+  ]
+}

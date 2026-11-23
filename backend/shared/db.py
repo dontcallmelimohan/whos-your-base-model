@@ -36,10 +36,25 @@ def migration_files() -> list[Path]:
 
 
 def init_schema(conn: sqlite3.Connection) -> list[str]:
-    """执行所有迁移，返回已执行的文件名（幂等：全部用 IF NOT EXISTS）。"""
+    """按文件名顺序执行未应用过的迁移。
+
+    用 schema_migrations 记账，因为 ALTER TABLE ADD COLUMN 不是幂等的：
+    每次启动都重放 002 会报 duplicate column。
+    """
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS schema_migrations (
+               name TEXT PRIMARY KEY,
+               applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+           )"""
+    )
+    done = {row[0] for row in conn.execute("SELECT name FROM schema_migrations").fetchall()}
+
     applied: list[str] = []
     for path in migration_files():
+        if path.name in done:
+            continue
         conn.executescript(path.read_text(encoding="utf-8"))
+        conn.execute("INSERT INTO schema_migrations (name) VALUES (?)", (path.name,))
         applied.append(path.name)
     conn.commit()
     return applied

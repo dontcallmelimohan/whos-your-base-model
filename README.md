@@ -8,10 +8,10 @@
 
 | 工作包 | 内容 | 负责人 | 状态 |
 |---|---|---|---|
-| **A** | 数据与框架：导入、快照、契约、骨架、部署 | 李默涵 | 后端可用，前端骨架已搭 |
-| **B** | 模型目录 + 供应链小图（`/catalog`、`/lineage`） | 待认领 | 两页均已由 A 搭出初版，可直接接手打磨 |
-| **C** | 大图 Galaxy（`/galaxy`） | 待认领 | 占位页 |
-| **D** | 生态分析（`/analysis`） | 待认领 | 初版可用（指标卡 + 集中度 + 两张榜） |
+| **1** | 模型目录与数据（`/catalog`、`/data`） | 李默涵 | 可用 |
+| **2** | 谱系探索与可视化（`/lineage`） | 待认领 | 可用，含声明图 / 补全图切换 |
+| **3** | 依赖发现与证据核验（`/evidence`） | 待认领 | 可用，抽取 → 证据 → 核验闭环 |
+| **4** | 生态分析与导出（`/analysis`） | 待认领 | 可用，含补全前后对比与 CSV |
 
 顶栏右上角的 ☀/☾ 按钮切换亮/暗主题（也会记住选择）；`?theme=dark` 可直接分享暗色链接。
 
@@ -61,9 +61,11 @@ backend/
   shared/                 冻结契约：contracts / db / errors / config / migrations
   modules/
     data/                 A：导入、快照、数据集
-    catalog/  lineage/    B：搜索、局部图
-    galaxy/               C：大图（待实现）
-    analysis/             D：统计
+    catalog/              1：导入、搜索、详情、数据集
+    lineage/              2：局部图
+    evidence/             3：抽取、证据、核验
+    analysis/             4：统计、对比、导出
+    galaxy/               扩展：大图（待实现）
   scripts/seed.py         初始化数据
   tests/                  按工作包分目录
 frontend/
@@ -78,17 +80,23 @@ docs/                     契约、部署、第三方声明
 
 | 方法与路径 | 归属 | 说明 |
 |---|---|---|
-| `GET /api/health` | A | 就绪检查 |
-| `GET /api/meta` | A | 上限常量、关系类型 |
-| `POST /api/imports` | A | 导入（fixtures / hubstats / modeltree） |
-| `GET /api/imports` | A | 导入记录 |
-| `GET /api/snapshots` | A | 数据版本 |
-| `GET /api/snapshots/{id}/stats` | A | 快照概况 |
-| `GET /api/datasets` | A | 数据集关联 |
-| `GET /api/models` | B | 搜索与分页 |
-| `GET /api/model` | B | 模型详情 |
-| `GET /api/graph` | B | 局部上下游图 |
-| `GET /api/analysis` | D | 统计指标 |
+| `GET /api/health` | 1 | 就绪检查 |
+| `GET /api/meta` | 1 | 上限常量、关系类型 |
+| `POST /api/imports` | 1 | 导入（fixtures / hubstats / modeltree） |
+| `GET /api/imports` | 1 | 导入记录 |
+| `GET /api/snapshots` | 1 | 数据版本 |
+| `GET /api/snapshots/{id}/stats` | 1 | 快照概况 |
+| `GET /api/datasets` | 1 | 数据集关联 |
+| `GET /api/models` | 1 | 搜索与分页 |
+| `GET /api/model` | 1 | 模型详情 |
+| `GET /api/graph` | 2 | 局部上下游图（`view=declared\|completed`） |
+| `GET /api/analysis` | 4 | 统计指标（`view=declared\|completed`） |
+| `POST /api/extractions` | 3 | 运行规则抽取，生成候选与证据 |
+| `GET /api/candidates` | 3 | 候选列表（按状态过滤） |
+| `GET /api/relations/{id}` | 3 | 关系详情 + 证据 + 核验历史 |
+| `POST /api/relations/{id}/reviews` | 3 | 确认 / 驳回 / 未知 |
+| `GET /api/diff` | 4 | 补全前后对比 |
+| `GET /api/analysis/export.csv` | 4 | 导出带快照与口径的 CSV |
 
 详细字段与示例见 [docs/CONTRACTS.md](docs/CONTRACTS.md)。
 

@@ -1,11 +1,13 @@
 """平台入口：只注册路由，不写业务逻辑。
 
 模块归属（谁改哪一块）：
-    modules/data        A  数据与框架     /api/imports /api/snapshots /api/datasets
-    modules/catalog     B  目录搜索       /api/models /api/model
-    modules/lineage     B  小图           /api/graph
-    modules/analysis    D  生态分析       /api/analysis
-    modules/galaxy      C  大图           待接入
+    模块一  目录与数据    modules/catalog   /api/imports /api/snapshots /api/datasets
+                                            /api/models /api/model
+    模块二  谱系与可视化  modules/lineage   /api/graph（view=declared|completed）
+    模块三  依赖与核验    modules/evidence  /api/extractions /api/candidates
+                                            /api/relations/{id} /api/relations/{id}/reviews
+    模块四  分析与导出    modules/analysis  /api/analysis /api/diff /api/analysis/export.csv
+    扩展    大图 Galaxy   modules/galaxy    待接入
 
 公共部分（app、shared/*）由 A 维护；其他人只加一行 include_router。
 """
@@ -21,7 +23,8 @@ from fastapi.staticfiles import StaticFiles
 
 from modules.analysis.router import router as analysis_router
 from modules.catalog.router import router as catalog_router
-from modules.data.router import router as data_router
+from modules.catalog.data_router import router as data_router
+from modules.evidence.router import router as evidence_router
 from modules.lineage.router import router as lineage_router
 from shared import config, graph_read
 from shared.contracts import HealthResponse, MetaResponse
@@ -73,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(data_router)
     app.include_router(catalog_router)
     app.include_router(lineage_router)
+    app.include_router(evidence_router)
     app.include_router(analysis_router)
     # TODO(C): app.include_router(galaxy_router)
 

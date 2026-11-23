@@ -55,6 +55,7 @@ def build_local_graph(
     depth: int = 1,
     relation_type: str | None = None,
     limit: int = config.DEFAULT_GRAPH_NODES,
+    view: str = "declared",
 ) -> GraphResponse:
     if not 1 <= depth <= config.MAX_DEPTH:
         raise invalid(f"depth 必须在 1..{config.MAX_DEPTH} 之间", {"depth": depth})
@@ -62,6 +63,8 @@ def build_local_graph(
         raise invalid(f"limit 必须在 1..{config.MAX_GRAPH_NODES} 之间", {"limit": limit})
     if direction not in ("upstream", "downstream", "both"):
         raise invalid("direction 只能是 upstream / downstream / both", {"direction": direction})
+    if view not in ("declared", "completed"):
+        raise invalid("view 只能是 declared / completed", {"view": view})
     if relation_type and relation_type not in config.RELATION_TYPES:
         raise invalid(
             "relation_type 不在允许范围内",
@@ -83,7 +86,7 @@ def build_local_graph(
     for _level in range(depth):
         next_frontier: list[str] = []
         for way in directions:
-            for row in graph_read.neighbours(conn, snapshot_id, frontier, way, relation_type):
+            for row in graph_read.neighbours(conn, snapshot_id, frontier, way, relation_type, view):
                 edge = _edge_from_row(row)
                 edges.setdefault(edge.id, edge)
                 for node_id in (row["parent_id"], row["child_id"]):
@@ -113,6 +116,7 @@ def build_local_graph(
     return GraphResponse(
         snapshot_id=snapshot_id,
         root=root_id,
+        view=view,
         direction=direction,  # type: ignore[arg-type]
         depth=depth,
         nodes=kept_nodes,

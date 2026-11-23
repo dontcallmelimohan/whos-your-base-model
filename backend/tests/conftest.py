@@ -19,7 +19,7 @@ def seeded_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
     os.environ["PLATFORM_DB"] = str(db)
     os.environ.setdefault("PLATFORM_DATA_DIR", str(db.parent))
 
-    from modules.data.importer import run_import
+    from modules.catalog.importer import run_import
     from shared.db import init_database
 
     init_database()

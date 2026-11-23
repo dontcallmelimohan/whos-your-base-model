@@ -51,7 +51,14 @@ def snapshot_stats(conn: sqlite3.Connection, snapshot_id: str) -> SnapshotStats:
             conn, "SELECT count(*) AS c FROM models WHERE snapshot_id = ?", (snapshot_id,)
         ),
         relation_count=_count(
-            conn, "SELECT count(*) AS c FROM relations WHERE snapshot_id = ?", (snapshot_id,)
+            conn,
+            "SELECT count(*) AS c FROM relations WHERE snapshot_id = ? AND is_baseline = 1",
+            (snapshot_id,),
+        ),
+        candidate_count=_count(
+            conn,
+            "SELECT count(*) AS c FROM relations WHERE snapshot_id = ? AND origin = 'candidate'",
+            (snapshot_id,),
         ),
         ghost_count=_count(
             conn,

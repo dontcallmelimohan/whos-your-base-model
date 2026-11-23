@@ -9,8 +9,8 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, Query
 
-from modules.data import service
-from modules.data.importer import run_import
+from modules.catalog import data_service as service
+from modules.catalog.importer import run_import
 from shared import graph_read
 from shared.contracts import (
     DatasetUsage,

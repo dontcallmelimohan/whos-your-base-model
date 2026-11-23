@@ -149,3 +149,63 @@ export interface AnalysisResponse {
   family_distribution: FamilyBucket[]
   cases: CaseRef[]
 }
+
+export type ReviewDecision = 'confirmed' | 'rejected' | 'unknown'
+
+export interface EvidenceItem {
+  id: string
+  relation_id: string
+  source_type: string
+  source_path: string | null
+  locator: string | null
+  quote: string | null
+  revision: string | null
+}
+
+export interface ReviewItem {
+  id: number
+  relation_id: string
+  decision: string
+  note: string | null
+  reviewer: string | null
+  created_at: string
+}
+
+export interface CandidateItem {
+  relation_id: string
+  parent_id: string
+  child_id: string
+  relation_type: RelationType
+  origin: string
+  status: string
+  source_field: string | null
+  evidence_count: number
+}
+
+export interface RelationDetail {
+  relation: CandidateItem
+  evidence: EvidenceItem[]
+  reviews: ReviewItem[]
+}
+
+export interface DiffEdge {
+  relation_id: string
+  parent_id: string
+  child_id: string
+  relation_type: RelationType
+  status: string
+}
+
+export interface MetricDelta {
+  declared: number
+  completed: number
+  delta: number
+}
+
+export interface DiffResponse {
+  snapshot_id: string
+  rule_version: string
+  added_edges: DiffEdge[]
+  pending_count: number
+  metrics: Record<string, MetricDelta>
+}

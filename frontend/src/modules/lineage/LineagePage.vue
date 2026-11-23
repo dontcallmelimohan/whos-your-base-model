@@ -26,6 +26,7 @@ const error = ref('')
 const direction = ref<Direction>('both')
 const depth = ref(1)
 const relationType = ref('')
+const view = ref<'declared' | 'completed'>('declared')
 
 const selectedNodeId = ref<string | null>(null)
 const selectedEdgeId = ref<string | null>(null)
@@ -61,6 +62,7 @@ async function load(modelId = root.value) {
       depth: depth.value,
       relation_type: relationType.value || undefined,
       limit: 100,
+      view: view.value,
     })
     selectedNodeId.value = modelId
     selectedEdgeId.value = null
@@ -113,6 +115,7 @@ async function bootstrap() {
   } catch {
     relationTypes.value = ['finetune', 'adapter', 'quantized', 'merge', 'unknown']
   }
+  if (route.query.view === 'completed') view.value = 'completed'
   const requested = typeof route.query.model === 'string' ? route.query.model : ''
   if (requested) {
     await load(requested)
@@ -178,6 +181,10 @@ defineExpose({ load })
           <option :value="1">深度 1</option>
           <option :value="2">深度 2</option>
         </select>
+        <select v-model="view" @change="load()">
+          <option value="declared">声明图</option>
+          <option value="completed">补全图</option>
+        </select>
         <select v-model="relationType" @change="load()">
           <option value="">全部关系</option>
           <option v-for="type in relationTypes" :key="type" :value="type">{{ type }}</option>
@@ -232,6 +239,7 @@ defineExpose({ load })
     <p class="footnote" style="margin-top: 20px">
       关系来自模型卡声明的 <code>base_model</code> 标签，方向为「上游 → 下游」。
       <span v-if="graph?.snapshot_id">当前数据版本：<code>{{ graph.snapshot_id }}</code></span>
+      <span v-if="view === 'completed'">· 补全图包含已核验通过的关系</span>
     </p>
   </section>
 </template>

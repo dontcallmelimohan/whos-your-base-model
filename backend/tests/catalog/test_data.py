@@ -17,7 +17,7 @@ def test_import_history_records_every_run(client):
 def test_snapshot_stats_add_up(client):
     stats = client.get("/api/snapshots/demo-2026-11/stats").json()
     assert stats["model_count"] == 14
-    assert stats["relation_count"] == 12
+    assert stats["relation_count"] == 12  # 只数声明关系，候选单独计数
     assert stats["ghost_count"] == 1
     assert stats["family_count"] == 3
     assert stats["dataset_link_count"] == 4

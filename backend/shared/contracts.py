@@ -110,6 +110,7 @@ class SnapshotStats(BaseModel):
     snapshot_id: str
     model_count: int
     relation_count: int
+    candidate_count: int = 0
     ghost_count: int
     family_count: int
     dataset_link_count: int
@@ -148,6 +149,7 @@ class GraphEdge(BaseModel):
 class GraphResponse(BaseModel):
     snapshot_id: str
     root: str
+    view: str = "declared"
     direction: Direction
     depth: int
     nodes: list[GraphNode]
@@ -227,6 +229,92 @@ class AnalysisResponse(BaseModel):
     top_upstream: list[UpstreamRank]
     family_distribution: list[FamilyBucket]
     cases: list[CaseRef] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------- 核验（模块三）
+
+
+class EvidenceItem(BaseModel):
+    id: str
+    relation_id: str
+    source_type: str
+    source_path: str | None = None
+    locator: str | None = None
+    quote: str | None = None
+    revision: str | None = None
+
+
+class ReviewItem(BaseModel):
+    id: int
+    relation_id: str
+    decision: str
+    note: str | None = None
+    reviewer: str | None = None
+    created_at: str
+
+
+class CandidateItem(BaseModel):
+    relation_id: str
+    parent_id: str
+    child_id: str
+    relation_type: RelationType
+    origin: str
+    status: str
+    source_field: str | None = None
+    evidence_count: int = 0
+
+
+class RelationDetail(BaseModel):
+    relation: CandidateItem
+    evidence: list[EvidenceItem] = Field(default_factory=list)
+    reviews: list[ReviewItem] = Field(default_factory=list)
+
+
+class ReviewRequest(BaseModel):
+    decision: str = Field(description="confirmed | rejected | unknown")
+    note: str | None = None
+    reviewer: str | None = None
+
+
+class ExtractionRequest(BaseModel):
+    snapshot_id: str | None = None
+    source: str = "fixtures"
+
+
+class ExtractionResult(BaseModel):
+    snapshot_id: str
+    source: str
+    scanned_models: int
+    created_candidates: int
+    created_evidence: int
+    skipped_declared: int
+
+
+# ---------------------------------------------------------------- 对比（模块四）
+
+
+class DiffEdge(BaseModel):
+    relation_id: str
+    parent_id: str
+    child_id: str
+    relation_type: RelationType
+    status: str
+
+
+class MetricDelta(BaseModel):
+    """对比一个指标在声明图与补全图中的取值。计数用整数、份额用小数，统一用 float 承载。"""
+
+    declared: float
+    completed: float
+    delta: float
+
+
+class DiffResponse(BaseModel):
+    snapshot_id: str
+    rule_version: str
+    added_edges: list[DiffEdge] = Field(default_factory=list)
+    pending_count: int = 0
+    metrics: dict[str, MetricDelta] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------- 公共

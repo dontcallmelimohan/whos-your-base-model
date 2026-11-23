@@ -26,6 +26,7 @@ def get_graph(
     depth: int = Query(default=1, ge=1, le=config.MAX_DEPTH),
     relation_type: str | None = Query(default=None),
     limit: int = Query(default=config.DEFAULT_GRAPH_NODES, ge=1, le=config.MAX_GRAPH_NODES),
+    view: str = Query(default="declared", description="declared = 仅声明；completed = 加上核验通过的候选"),
     conn: sqlite3.Connection = Depends(get_conn),
 ) -> GraphResponse:
     snapshot = graph_read.get_snapshot(conn, snapshot_id)
@@ -37,4 +38,5 @@ def get_graph(
         depth=depth,
         relation_type=relation_type,
         limit=limit,
+        view=view,
     )

@@ -49,6 +49,17 @@ def get_snapshot(conn: sqlite3.Connection, snapshot_id: str | None) -> sqlite3.R
     return row
 
 
+def view_filter(view: str = "declared", alias: str = "") -> str:
+    """两种视图：declared = 只读模型卡声明；completed = 再加上核验通过的候选。"""
+    prefix = f"{alias}." if alias else ""
+    if view == "completed":
+        return (
+            f"({prefix}is_baseline = 1 OR "
+            f"({prefix}origin = 'candidate' AND {prefix}status = 'confirmed'))"
+        )
+    return f"{prefix}is_baseline = 1"
+
+
 def count_models(conn: sqlite3.Connection, snapshot_id: str) -> int:
     row = conn.execute(
         "SELECT count(*) AS c FROM models WHERE snapshot_id = ?", (snapshot_id,)
@@ -56,9 +67,9 @@ def count_models(conn: sqlite3.Connection, snapshot_id: str) -> int:
     return int(row["c"])
 
 
-def count_relations(conn: sqlite3.Connection, snapshot_id: str) -> int:
+def count_relations(conn: sqlite3.Connection, snapshot_id: str, view: str = "declared") -> int:
     row = conn.execute(
-        "SELECT count(*) AS c FROM relations WHERE snapshot_id = ? AND is_baseline = 1",
+        f"SELECT count(*) AS c FROM relations WHERE snapshot_id = ? AND {view_filter(view)}",
         (snapshot_id,),
     ).fetchone()
     return int(row["c"])
@@ -89,6 +100,7 @@ def neighbours(
     node_ids: Iterable[str],
     direction: str,
     relation_type: str | None = None,
+    view: str = "declared",
 ) -> list[sqlite3.Row]:
     """取一层邻居关系。
 
@@ -102,7 +114,7 @@ def neighbours(
     column = "child_id" if direction == "upstream" else "parent_id"
     sql = (
         f"SELECT * FROM relations WHERE snapshot_id = ? AND {column} IN ({placeholders})"
-        " AND is_baseline = 1"
+        f" AND {view_filter(view)}"
     )
     params: list[object] = [snapshot_id, *ids]
     if relation_type:
@@ -112,9 +124,11 @@ def neighbours(
     return conn.execute(sql, params).fetchall()
 
 
-def all_relations(conn: sqlite3.Connection, snapshot_id: str) -> list[sqlite3.Row]:
+def all_relations(
+    conn: sqlite3.Connection, snapshot_id: str, view: str = "declared"
+) -> list[sqlite3.Row]:
     return conn.execute(
-        "SELECT * FROM relations WHERE snapshot_id = ? AND is_baseline = 1"
+        f"SELECT * FROM relations WHERE snapshot_id = ? AND {view_filter(view)}"
         " ORDER BY parent_id, child_id, relation_type",
         (snapshot_id,),
     ).fetchall()

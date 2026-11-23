@@ -3,6 +3,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import DataPage from '@/modules/data/DataPage.vue'
 import AnalysisPage from '@/modules/analysis/AnalysisPage.vue'
 import CatalogPage from '@/modules/catalog/CatalogPage.vue'
+import EvidencePage from '@/modules/evidence/EvidencePage.vue'
 import LineagePage from '@/modules/lineage/LineagePage.vue'
 import PlaceholderPage from './PlaceholderPage.vue'
 
@@ -36,6 +37,12 @@ const router = createRouter({
       name: 'lineage',
       component: LineagePage,
       meta: { title: '供应链小图', owner: 'B' },
+    },
+    {
+      path: '/evidence',
+      name: 'evidence',
+      component: EvidencePage,
+      meta: { title: '依赖核验', owner: '3' },
     },
     {
       path: '/galaxy',
