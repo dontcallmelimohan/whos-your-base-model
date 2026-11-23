@@ -13,6 +13,7 @@ const props = defineProps<{
   layout: Layout
   root: string
   selectedId: string | null
+  busy?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -80,19 +81,20 @@ function shortId(id: string, max = 21): string {
     <svg
       :viewBox="viewBox"
       class="canvas-svg"
-      :class="{ dragging: !!dragging }"
+      :class="{ dragging: !!dragging, busy: props.busy }"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
       @pointerleave="onPointerUp"
     >
-      <g :transform="transform">
+      <g class="stage" :class="{ 'no-anim': !!dragging }" :style="{ transform }">
         <!-- 边 -->
         <g>
           <path
             v-for="edge in layout.edges"
             :key="edge.id"
             :d="edge.path"
+            pathLength="1"
             class="edge"
             :class="{ active: selectedId === edge.id, hovered: hovered === edge.id }"
             @click.stop="emit('select-edge', edge.id)"
@@ -113,8 +115,8 @@ function shortId(id: string, max = 21): string {
         <g
           v-for="node in layout.nodes"
           :key="node.id"
-          :transform="`translate(${node.x} ${node.y})`"
           class="node"
+          :style="{ transform: `translate(${node.x}px, ${node.y}px)` }"
           @click.stop="emit('select-node', node.id)"
           @dblclick.stop="emit('focus-node', node.id)"
         >

@@ -62,8 +62,9 @@ function num(value: number | null | undefined): string {
       <button class="panel-close" title="关闭" @click="emit('close')">✕</button>
     </header>
 
-    <!-- 节点 -->
-    <template v-if="node">
+    <Transition name="swap" mode="out-in">
+      <!-- 节点 -->
+      <div v-if="node" :key="'n-' + node.id">
       <section class="panel-section">
         <h3>身份</h3>
         <dl class="kv">
@@ -101,10 +102,10 @@ function num(value: number | null | undefined): string {
           </li>
         </ul>
       </section>
-    </template>
+      </div>
 
-    <!-- 边 -->
-    <template v-else-if="edge">
+      <!-- 边 -->
+      <div v-else-if="edge" :key="'e-' + edge.id">
       <section class="panel-section">
         <h3>依赖</h3>
         <dl class="kv">
@@ -122,8 +123,9 @@ function num(value: number | null | undefined): string {
           </dd>
         </dl>
       </section>
-    </template>
+      </div>
+    </Transition>
 
-    <div v-else class="panel-empty muted small">在左侧点一个节点或一条边</div>
+    <div v-if="!node && !edge" class="panel-empty muted small">在左侧点一个节点或一条边</div>
   </aside>
 </template>

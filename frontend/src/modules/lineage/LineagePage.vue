@@ -200,6 +200,7 @@ defineExpose({ load })
         v-else
         :layout="layout"
         :root="root"
+        :busy="loading"
         :selected-id="selectedEdgeId ?? selectedNodeId"
         @select-node="onSelectNode"
         @select-edge="onSelectEdge"
@@ -212,6 +213,7 @@ defineExpose({ load })
         :nodes="graph?.nodes ?? []"
         :edges="graph?.edges ?? []"
         :root="root"
+        :busy="loading"
         @close="((selectedNodeId = null), (selectedEdgeId = null))"
         @focus="load($event)"
       />
