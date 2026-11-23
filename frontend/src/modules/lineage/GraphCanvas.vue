@@ -4,8 +4,11 @@
  *
  * 视觉参考 lineage-explorer 的图画布：点状网格底、胶囊节点、
  * 左侧图标方块 + 小字类型标签 + 等宽字体模型名。
+ *
+ * 交互：点节点 = 把它变成新的根（重新请求 + 重新布局 + 相机跟过去）。
+ * 相机与节点位置都用 CSS transform 补间，所以整个过程是滑过去的。
  */
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 import { NODE_H, NODE_W, type Layout } from './layout'
 
@@ -19,66 +22,78 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select-node', id: string): void
   (e: 'select-edge', id: string): void
-  (e: 'focus-node', id: string): void
+  (e: 'reroot', id: string): void
 }>()
+
+// 固定视口：换根时 bounds 变了也不会让画面"跳一下"
+const VIEW_W = 1000
+const VIEW_H = 620
+const viewBox = `0 0 ${VIEW_W} ${VIEW_H}`
 
 const scale = ref(1)
 const offset = ref({ x: 0, y: 0 })
 const dragging = ref<{ x: number; y: number } | null>(null)
 const hovered = ref<string | null>(null)
-
-const viewBox = computed(() => {
-  const b = props.layout.bounds
-  return `${b.x} ${b.y} ${Math.max(b.width, 320)} ${Math.max(b.height, 240)}`
-})
+const canvasEl = ref<HTMLDivElement | null>(null)
 
 const transform = computed(
-  () => `translate(${offset.value.x} ${offset.value.y}) scale(${scale.value})`,
+  () => `translate(${offset.value.x}px, ${offset.value.y}px) scale(${scale.value})`,
 )
 
-/**
- * 把某个节点移到画布中心（参考 lineage-explorer 的「点谁谁居中」）。
- * offset 变化由 .stage 的 transition 负责补间，所以是滑过去的。
- */
-function centerOn(id: string, scaleTarget = scale.value) {
+/** 整张图刚好放进视口时的缩放比 */
+function fitScale(): number {
+  const b = props.layout.bounds
+  const kx = (VIEW_W - 80) / Math.max(b.width, 1)
+  const ky = (VIEW_H - 80) / Math.max(b.height, 1)
+  return Math.min(1.1, Math.max(0.35, Math.min(kx, ky)))
+}
+
+/** 把某个节点挪到视口中心 */
+function centerOn(id: string, k = scale.value) {
   const node = props.layout.nodes.find((item) => item.id === id)
   if (!node) return
-  const bounds = props.layout.bounds
-  const cx = bounds.x + Math.max(bounds.width, 320) / 2
-  const cy = bounds.y + Math.max(bounds.height, 240) / 2
-  scale.value = scaleTarget
-  offset.value = { x: cx - scaleTarget * node.x, y: cy - scaleTarget * node.y }
+  scale.value = Number(k.toFixed(3))
+  offset.value = { x: VIEW_W / 2 - k * node.x, y: VIEW_H / 2 - k * node.y }
 }
 
-function handleNodeClick(id: string) {
-  centerOn(id)
-  emit('select-node', id)
+function fit() {
+  const b = props.layout.bounds
+  const k = fitScale()
+  scale.value = Number(k.toFixed(3))
+  offset.value = {
+    x: VIEW_W / 2 - k * (b.x + b.width / 2),
+    y: VIEW_H / 2 - k * (b.y + b.height / 2),
+  }
 }
 
-// 换根后自动把新的根居中
+onMounted(() => nextTick(() => centerOn(props.root, fitScale())))
+
+// 换根：新根居中；用户放大过就保持当前比例，否则回到适配比例
 watch(
   () => props.root,
   (id) => {
-    scale.value = 1
-    nextTick(() => centerOn(id, 1))
+    const k = Math.min(scale.value, fitScale())
+    nextTick(() => centerOn(id, k))
   },
-  { immediate: true },
 )
 
 watch(
   () => props.layout,
-  () => {
-    nextTick(() => centerOn(props.root, scale.value))
-  },
+  () => nextTick(() => centerOn(props.root, Math.min(scale.value, fitScale()))),
 )
 
-function zoom(factor: number) {
-  const next = Math.min(2.2, Math.max(0.45, scale.value * factor))
-  centerOn(props.root, Number(next.toFixed(2)))
+function handleNodeClick(id: string) {
+  emit('select-node', id)
+  if (id === props.root) {
+    centerOn(id)
+    return
+  }
+  emit('reroot', id)
 }
 
-function reset() {
-  centerOn(props.root, 1)
+function zoom(factor: number) {
+  const next = Math.min(2.2, Math.max(0.35, scale.value * factor))
+  centerOn(props.root, next)
 }
 
 function onWheel(event: WheelEvent) {
@@ -96,9 +111,8 @@ function onPointerMove(event: PointerEvent) {
   const dx = event.clientX - dragging.value.x
   const dy = event.clientY - dragging.value.y
   dragging.value = { x: event.clientX, y: event.clientY }
-  // viewBox 单位与像素的比例，避免拖拽速度随缩放漂移
-  const rect = (event.currentTarget as SVGElement).getBoundingClientRect()
-  const ratio = Math.max(props.layout.bounds.width / Math.max(rect.width, 1), 0.2)
+  const rect = canvasEl.value?.getBoundingClientRect()
+  const ratio = VIEW_W / Math.max(rect?.width ?? VIEW_W, 1)
   offset.value = { x: offset.value.x + dx * ratio, y: offset.value.y + dy * ratio }
 }
 
@@ -112,9 +126,10 @@ function shortId(id: string, max = 21): string {
 </script>
 
 <template>
-  <div class="canvas" @wheel="onWheel">
+  <div ref="canvasEl" class="canvas" @wheel="onWheel">
     <svg
       :viewBox="viewBox"
+      preserveAspectRatio="xMidYMid meet"
       class="canvas-svg"
       :class="{ dragging: !!dragging, busy: props.busy }"
       @pointerdown="onPointerDown"
@@ -136,14 +151,6 @@ function shortId(id: string, max = 21): string {
             @mouseenter="hovered = edge.id"
             @mouseleave="hovered = null"
           />
-          <circle
-            v-for="edge in layout.edges"
-            :key="`dot-${edge.id}`"
-            :cx="layout.nodes.find((n) => n.id === edge.target)?.x ?? 0"
-            :cy="layout.nodes.find((n) => n.id === edge.target)?.y ?? 0"
-            r="2.6"
-            class="edge-dot"
-          />
         </g>
 
         <!-- 节点 -->
@@ -153,7 +160,6 @@ function shortId(id: string, max = 21): string {
           class="node"
           :style="{ transform: `translate(${node.x}px, ${node.y}px)` }"
           @click.stop="handleNodeClick(node.id)"
-          @dblclick.stop="emit('focus-node', node.id)"
         >
           <rect
             :x="-NODE_W / 2"
@@ -185,9 +191,9 @@ function shortId(id: string, max = 21): string {
     <div class="canvas-tools">
       <button class="tool" title="放大" @click="zoom(1.15)">+</button>
       <button class="tool" title="缩小" @click="zoom(0.87)">−</button>
-      <button class="tool" title="复位" @click="reset">⤢</button>
+      <button class="tool" title="适配窗口" @click="fit">⤢</button>
     </div>
 
-    <div class="canvas-hint">点击节点查看属性 · 双击以该节点为根重新展开 · 滚轮缩放</div>
+    <div class="canvas-hint">点节点：以它为中心重新展开 · 滚轮缩放 · 拖拽平移</div>
   </div>
 </template>

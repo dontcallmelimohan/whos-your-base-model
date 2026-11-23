@@ -52,6 +52,7 @@ async function load(modelId = root.value) {
   showSuggestions.value = false
   try {
     root.value = modelId
+    query.value = modelId
     graph.value = await fetchGraph({
       model_id: modelId,
       direction: direction.value,
@@ -204,7 +205,7 @@ defineExpose({ load })
         :selected-id="selectedEdgeId ?? selectedNodeId"
         @select-node="onSelectNode"
         @select-edge="onSelectEdge"
-        @focus-node="load($event)"
+        @reroot="load($event)"
       />
 
       <DetailPanel
