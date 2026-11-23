@@ -190,6 +190,26 @@ class FamilyBucket(BaseModel):
     total_descendants: int
 
 
+class Concentration(BaseModel):
+    """集中度：口径见 docs/CONTRACTS.md。
+
+    hhi         = Σ(直接下游数/总关系数)²，0..1
+    hhi_scaled  = hhi × 10000，产业组织学常用写法
+    top10_share = 前 10 上游的直接下游数之和 / 总关系数
+    """
+
+    hhi: float
+    hhi_scaled: float
+    top10_share: float
+    parent_count: int
+
+
+class DataQuality(BaseModel):
+    ghost_ratio: float = Field(description="属性未收录的上游占全部上游的比例")
+    ghost_parent_count: int
+    cyclic_node_count: int = Field(description="互相指向的二元环上的节点数")
+
+
 class CaseRef(BaseModel):
     title: str
     model_id: str
@@ -201,6 +221,8 @@ class AnalysisResponse(BaseModel):
     rule_version: str
     scope_note: str | None = None
     metrics: Metrics
+    concentration: Concentration
+    data_quality: DataQuality
     type_distribution: list[TypeBucket]
     top_upstream: list[UpstreamRank]
     family_distribution: list[FamilyBucket]

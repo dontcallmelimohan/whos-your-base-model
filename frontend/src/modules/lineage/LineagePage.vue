@@ -6,6 +6,7 @@
  * 但数据源不是它的 .eqtylab manifest，而是本项目 SQLite 里的 base_model 边。
  */
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { errorText } from '@/shared/api'
 import { fetchMeta } from '@/shared/meta'
@@ -16,6 +17,7 @@ import GraphCanvas from './GraphCanvas.vue'
 import { fetchGraph, searchModels, type Direction, type GraphEdge, type GraphNode, type GraphResponse } from './api'
 import { layoutGraph } from './layout'
 
+const route = useRoute()
 const root = ref('')
 const graph = ref<GraphResponse | null>(null)
 const loading = ref(false)
@@ -110,6 +112,13 @@ async function bootstrap() {
     relationTypes.value = meta.relation_types
   } catch {
     relationTypes.value = ['finetune', 'adapter', 'quantized', 'merge', 'unknown']
+  }
+  const requested = typeof route.query.model === 'string' ? route.query.model : ''
+  if (requested) {
+    await load(requested)
+    typing.value = false
+    showSuggestions.value = false
+    return
   }
   try {
     const first = await searchModels('qwen2.5')

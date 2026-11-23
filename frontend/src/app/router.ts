@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 
 import DataPage from '@/modules/data/DataPage.vue'
+import AnalysisPage from '@/modules/analysis/AnalysisPage.vue'
 import LineagePage from '@/modules/lineage/LineagePage.vue'
 import PlaceholderPage from './PlaceholderPage.vue'
 
@@ -52,12 +53,8 @@ const router = createRouter({
     {
       path: '/analysis',
       name: 'analysis',
-      component: PlaceholderPage,
-      meta: {
-        title: '生态分析',
-        owner: 'D',
-        desc: '指标卡、三张榜、案例。组件放在 src/modules/analysis/。',
-      },
+      component: AnalysisPage,
+      meta: { title: '生态分析', owner: 'D' },
     },
   ],
 })

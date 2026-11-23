@@ -154,6 +154,10 @@
   "metrics": { "model_count": 14, "edge_count": 12, "unique_pair_count": 12,
                "parent_count": 8, "root_count": 3, "ghost_count": 1,
                "family_count": 3, "cyclic_node_count": 2 },
+  "concentration": { "hhi": 0.1806, "hhi_scaled": 1806.0,
+                     "top10_share": 0.75, "parent_count": 8 },
+  "data_quality": { "ghost_ratio": 0.125, "ghost_parent_count": 1,
+                    "cyclic_node_count": 2 },
   "type_distribution": [{ "type": "finetune", "count": 7 }],
   "top_upstream": [{ "model_id": "Qwen/Qwen2.5-7B", "direct": 4, "total": 5,
                      "family": "qwen2.5" }],
@@ -164,8 +168,14 @@
 
 口径：
 
+- `hhi` = Σ (某上游直接下游数 ÷ 关系总数)²，`hhi_scaled` = hhi × 10000；
+  越低越分散，10000 表示完全垄断；
+- `top10_share` = 前 10 上游的直接下游数之和 ÷ 关系总数；
+- `ghost_ratio` = 有下游但属性未收录的上游数 ÷ 全部上游数；
+  导入子集时该值会偏高，页面需注明这是范围问题而非生态缺失；
+- `cyclic_node_count` 只统计**互相指向的二元环**，不做全图闭包（成本考虑）；
 - `edge_count`（带类型的关系条数）与 `unique_pair_count`（唯一上下游对）**必须分开显示**；
-- `direct` 是直接下游数，`total` 是可达后代数（含间接），两者不可混用；
+- `top_upstream` 按 `direct` 降序；`direct` 是直接下游数，`total` 是可达后代数（含间接），两者不可混用；
 - `parent_count` = 有下游的模型数，`root_count` = 没有上游的模型数。
 
 ## 6. 待接入（C）

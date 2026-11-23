@@ -38,7 +38,8 @@ def test_top_upstream_distinguishes_direct_and_total(client):
     llama = next(item for item in top if item["model_id"] == "meta-llama/Llama-3.2-1B")
     assert llama["direct"] == 1
     assert llama["total"] == 4
-    assert top == sorted(top, key=lambda item: -item["total"])
+    # 榜单按「直接下游数」排序，`total` 是附带的可达后代数
+    assert top == sorted(top, key=lambda item: (-item["direct"], item["model_id"]))
 
 
 def test_family_distribution(client):
@@ -60,3 +61,19 @@ def test_cases_only_reference_existing_models(client):
     for case in body["cases"]:
         resp = client.get("/api/model", params={"model_id": case["model_id"]})
         assert resp.status_code == 200, case
+
+
+def test_concentration_and_quality(client):
+    body = client.get("/api/analysis").json()
+    concentration = body["concentration"]
+    # 12 条关系，最大上游 4 个直接下游 → HHI = (4/12)² + (2/12)² + 6×(1/12)²
+    assert concentration["parent_count"] == 8
+    assert 0 < concentration["hhi"] <= 1
+    assert 0 < concentration["top10_share"] <= 1
+    assert concentration["hhi_scaled"] == round(concentration["hhi"] * 10000, 1)
+
+    quality = body["data_quality"]
+    # 样例里 8 个上游，其中 bigscience/bloom-560m 是 ghost
+    assert quality["ghost_parent_count"] == 1
+    assert quality["ghost_ratio"] == 0.125
+    assert quality["cyclic_node_count"] == 2

@@ -82,3 +82,59 @@ export interface Meta {
   rule_version: string
   relation_types: RelationType[]
 }
+
+export interface Metrics {
+  model_count: number
+  edge_count: number
+  unique_pair_count: number
+  parent_count: number
+  root_count: number
+  ghost_count: number
+  family_count: number
+  cyclic_node_count: number
+}
+
+export interface Concentration {
+  hhi: number
+  hhi_scaled: number
+  top10_share: number
+  parent_count: number
+}
+
+export interface DataQuality {
+  ghost_ratio: number
+  ghost_parent_count: number
+  cyclic_node_count: number
+}
+
+export interface UpstreamRank {
+  model_id: string
+  direct: number
+  total: number
+  family: string | null
+}
+
+export interface FamilyBucket {
+  family: string
+  models: number
+  total_descendants: number
+}
+
+export interface CaseRef {
+  title: string
+  model_id: string
+  note: string
+}
+
+export interface AnalysisResponse {
+  snapshot_id: string
+  rule_version: string
+  scope_note: string | null
+  metrics: Metrics
+  concentration: Concentration
+  data_quality: DataQuality
+  type_distribution: TypeBucket[]
+  top_upstream: UpstreamRank[]
+  family_distribution: FamilyBucket[]
+  cases: CaseRef[]
+}
