@@ -1,7 +1,8 @@
 # 接口契约（冻结层）
 
 > 改这个文件里的任何字段，必须先在群里说明，并同步改：
-> `backend/shared/contracts.py`、`frontend/src/shared/types.ts`、`backend/tests/integration/`。
+> `backend/shared/contracts.py`、`frontend/src/shared/types.ts`、`tests/integration/`。
+> 证据相关的字段与判定约定另见 `docs/EVIDENCE_HANDOFF.md`。
 
 ## 0. 通用约定
 
@@ -48,7 +49,7 @@
   "relation_types": ["finetune", "adapter", "quantized", "merge", "unknown"] }
 ```
 
-## 2. 数据（A）
+## 2. 数据（任务 1）
 
 ### POST /api/imports
 
@@ -84,7 +85,7 @@
 
 `ItemList<{dataset_id, model_count, source_field}>`，按关联模型数倒序。
 
-## 3. 目录（B）
+## 3. 目录（任务 1）
 
 ### GET /api/models?q=&snapshot_id=&family=&include_ghost=&page=&page_size=
 
@@ -110,7 +111,7 @@
 
 `source_field` 必须保留：只展示“记录中的关联”，不推断训练用途。
 
-## 4. 小图（B）
+## 4. 谱系图（任务 2）
 
 ### GET /api/graph
 
@@ -144,7 +145,7 @@
 - 环不会死循环（`visited` 集合）；
 - 上游属性缺失时保留节点并置 `ghost: true`。
 
-## 5. 分析（D）
+## 5. 分析（任务 1）
 
 ### GET /api/analysis?snapshot_id=
 
@@ -178,16 +179,19 @@
 - `top_upstream` 按 `direct` 降序；`direct` 是直接下游数，`total` 是可达后代数（含间接），两者不可混用；
 - `parent_count` = 有下游的模型数，`root_count` = 没有上游的模型数。
 
-## 6. 待接入（C）
+## 6. 待接入（扩展，不在 v5 验收范围）
 
 ```text
 GET /api/galaxy?family=&relation_type=&limit=
 GET /api/galaxy/point?model_id=
 ```
 
-返回预计算坐标，前端不算布局。由工作包 C 定义后补进本节。
+返回预计算坐标，前端不算布局。认领扩展项后再定义并补进本节。
 
-## 7. 依赖发现与核验（模块 3）
+## 7. 证据检索与核验（任务 3 产出，任务 4 判定/记录）
+
+> 候选与证据由任务 3 写入；`/api/candidates`、`/api/relations/{id}` 与复核记录归任务 4。
+> 四类结论、版本对齐与入图门槛见 `docs/EVIDENCE_HANDOFF.md`。
 
 ### POST /api/extractions
 
@@ -241,11 +245,12 @@ GET /api/galaxy/point?model_id=
 - 核验记录**追加**，最新一条决定 `status`；
 - 返回更新后的 `RelationDetail`。
 
-## 8. 对比与导出（模块 4）
+## 8. 对比与导出（任务 1）
 
 ### GET /api/analysis?view=declared|completed
 
 `declared` 只看模型卡声明；`completed` 额外包含 `status=confirmed` 的候选。
+过滤规则由 `backend/shared/graph_read.py`（任务 2）统一提供，图与统计共用。
 
 ### GET /api/diff?snapshot_id=
 
@@ -259,6 +264,8 @@ GET /api/galaxy/point?model_id=
 ```
 
 固定返回 `edge_count`、`unique_pair_count`、`parent_count`、`hhi_scaled`、`top10_share` 五项。
+v5 首版分析必须包含：按关系类型的核验汇总、受影响模型的直接下游差分、可导出的 CSV；
+多级后代与家族排名是扩展项。
 
 ### GET /api/analysis/export.csv?snapshot_id=&view=
 
@@ -269,3 +276,16 @@ rank,model_id,family,direct,total,share_of_edges
 ```
 
 导出内容必须能凭注释行复算，不能只给数字。
+
+## 9. v5 待增接口（未冻结）
+
+v5 要求「单模型核验 / 单条边核验」和「核验结论查询」，目前还没有对应接口。
+拟议形状（需四人同意后再写进契约与实现）：
+
+```text
+POST /api/verifications          body: { snapshot_id, model_id? , relation_id? }
+GET  /api/verifications?relation_id=&snapshot_id=
+```
+
+返回 `VerdictRecord`（字段见 `docs/EVIDENCE_HANDOFF.md` 第 3 节）。
+在定稿前，前端不要依赖这两个路径。

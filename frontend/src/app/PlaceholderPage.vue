@@ -10,15 +10,15 @@ const desc = computed(() => String(route.meta.desc ?? ''))
 
 <template>
   <section class="placeholder">
-    <div class="badge badge-accent">工作包 {{ owner }}</div>
+    <div class="badge badge-accent">任务 {{ owner }}</div>
     <h1>{{ title }}</h1>
     <p>{{ desc }}</p>
 
     <h2 style="margin-top: 8px">接入方式</h2>
     <ol>
-      <li>后端：在 <code>backend/modules/</code> 下建自己的包，在 <code>app.py</code> 加一行 <code>include_router</code>。</li>
+      <li>后端：在 <code>backend/modules/</code> 下建自己的包，在 <code>app.py</code> 加一行 <code>include_router</code>；证据模块按 <code>retrieval/</code> 与 <code>verification/</code> 分开。</li>
       <li>前端：把 <code>src/app/router.ts</code> 里的 <code>PlaceholderPage</code> 换成自己的页面组件。</li>
-      <li>测试：在 <code>backend/tests/</code> 下建同名目录，只测自己的接口。</li>
+      <li>测试：在仓库根 <code>tests/</code> 下建同名目录（证据按 <code>retrieval/</code>、<code>verification/</code> 分），只测自己的接口。</li>
       <li>只 import <code>@/shared</code> 与 <code>shared/</code>，不跨人引用。</li>
     </ol>
 

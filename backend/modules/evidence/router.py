@@ -1,63 +1,20 @@
-"""工作包 3：依赖发现与证据核验接口。"""
+"""证据模块路由聚合。
+
+拆成两个子路由，各自归一个工作包：
+
+    retrieval/router.py      任务 3：POST /api/extractions
+    verification/router.py   任务 4：/api/candidates、/api/relations/{id}
+
+`app.py` 只 import 这里的 `router`，两个认领者互不改对方的文件。
+"""
 
 from __future__ import annotations
 
-import sqlite3
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends, Query
+from modules.evidence.retrieval.router import router as retrieval_router
+from modules.evidence.verification.router import router as verification_router
 
-from modules.evidence import extractor, service
-from shared import graph_read
-from shared.contracts import (
-    ExtractionRequest,
-    ExtractionResult,
-    ItemList,
-    CandidateItem,
-    RelationDetail,
-    ReviewRequest,
-)
-from shared.db import get_conn
-
-router = APIRouter(prefix="/api", tags=["evidence"])
-
-
-@router.post("/extractions", response_model=ExtractionResult)
-def run_extraction(payload: ExtractionRequest) -> ExtractionResult:
-    result = extractor.extract_candidates(payload.snapshot_id, payload.source)
-    return ExtractionResult(**result)
-
-
-@router.get("/candidates", response_model=ItemList[CandidateItem])
-def list_candidates(
-    snapshot_id: str | None = Query(default=None),
-    status: str | None = Query(default=None, description="pending / confirmed / rejected / unknown"),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    conn: sqlite3.Connection = Depends(get_conn),
-) -> ItemList[CandidateItem]:
-    snapshot = graph_read.get_snapshot(conn, snapshot_id)
-    items, total = service.list_candidates(conn, snapshot["id"], status, page, page_size)
-    return ItemList[CandidateItem](items=items, total=total, page=page, page_size=page_size)
-
-
-@router.get("/candidates/summary")
-def candidates_summary(
-    snapshot_id: str | None = Query(default=None),
-    conn: sqlite3.Connection = Depends(get_conn),
-) -> dict:
-    snapshot = graph_read.get_snapshot(conn, snapshot_id)
-    return {"snapshot_id": snapshot["id"], **service.status_counts(conn, snapshot["id"])}
-
-
-@router.get("/relations/{relation_id}", response_model=RelationDetail)
-def get_relation(relation_id: str, conn: sqlite3.Connection = Depends(get_conn)) -> RelationDetail:
-    return service.relation_detail(conn, relation_id)
-
-
-@router.post("/relations/{relation_id}/reviews", response_model=RelationDetail)
-def post_review(
-    relation_id: str,
-    payload: ReviewRequest,
-    conn: sqlite3.Connection = Depends(get_conn),
-) -> RelationDetail:
-    return service.add_review(conn, relation_id, payload.decision, payload.note, payload.reviewer)
+router = APIRouter()
+router.include_router(retrieval_router)
+router.include_router(verification_router)

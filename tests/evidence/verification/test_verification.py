@@ -1,6 +1,14 @@
-"""工作包 3 的验收测试：候选抽取 → 证据 → 核验 → 补全图变化。"""
+"""任务 4 的验收测试：候选查询、核验记录与入图状态。
+
+自动判定（judge）与批处理的样例测试随实现补在 `test_judge.py` / `test_batch.py`，
+四类结论的固定样例见 docs/EVIDENCE_HANDOFF.md。
+"""
 
 from __future__ import annotations
+
+
+def _extract(client):
+    client.post("/api/extractions", json={"source": "fixtures"})
 
 
 def _candidates(client, status: str | None = None):
@@ -8,44 +16,15 @@ def _candidates(client, status: str | None = None):
     return client.get("/api/candidates", params=params).json()
 
 
-def test_extraction_creates_candidates_with_evidence(client):
-    result = client.post("/api/extractions", json={"source": "fixtures"}).json()
-    assert result["snapshot_id"] == "demo-2026-11"
-    assert result["scanned_models"] >= 1
-    assert result["skipped_declared"] >= 1  # 反例：正文提到的上游已在声明里
-
-    body = _candidates(client)
-    assert body["total"] >= 2
-    first = body["items"][0]
-    assert first["origin"] == "candidate"
-    assert first["evidence_count"] >= 1
-
-
-def test_extraction_is_idempotent(client):
-    client.post("/api/extractions", json={"source": "fixtures"})
-    first = _candidates(client)["total"]
-    client.post("/api/extractions", json={"source": "fixtures"})
-    assert _candidates(client)["total"] == first
-
-
 def test_declared_relations_are_not_candidates(client):
+    _extract(client)
     body = _candidates(client)
     for item in body["items"]:
         assert item["origin"] == "candidate"
 
 
-def test_relation_detail_has_quote_and_locator(client):
-    candidate = _candidates(client)["items"][0]
-    detail = client.get(f"/api/relations/{candidate['relation_id']}").json()
-    assert detail["relation"]["relation_id"] == candidate["relation_id"]
-    evidence = detail["evidence"][0]
-    assert evidence["quote"]
-    assert evidence["locator"].startswith("L")
-    assert evidence["source_path"]
-
-
 def test_confirm_adds_edge_to_completed_graph(client):
-    client.post("/api/extractions", json={"source": "fixtures"})
+    _extract(client)
     candidate = _candidates(client)["items"][0]
     relation_id = candidate["relation_id"]
 
@@ -54,7 +33,10 @@ def test_confirm_adds_edge_to_completed_graph(client):
     ).json()
     assert before["view"] == "declared"
 
-    detail = client.post(f"/api/relations/{relation_id}/reviews", json={"decision": "confirmed", "note": "README 原文明确"}).json()
+    detail = client.post(
+        f"/api/relations/{relation_id}/reviews",
+        json={"decision": "confirmed", "note": "README 原文明确"},
+    ).json()
     assert detail["relation"]["status"] == "confirmed"
     assert detail["reviews"][-1]["decision"] == "confirmed"
 
@@ -67,7 +49,7 @@ def test_confirm_adds_edge_to_completed_graph(client):
 
 
 def test_reject_removes_from_completed_graph(client):
-    client.post("/api/extractions", json={"source": "fixtures"})
+    _extract(client)
     pending = _candidates(client, "pending")["items"]
     candidate = pending[0] if pending else _candidates(client)["items"][0]
     relation_id = candidate["relation_id"]
@@ -84,7 +66,9 @@ def test_reject_removes_from_completed_graph(client):
 
 def test_invalid_decision_rejected(client):
     candidate = _candidates(client)["items"][0]
-    resp = client.post(f"/api/relations/{candidate['relation_id']}/reviews", json={"decision": "maybe"})
+    resp = client.post(
+        f"/api/relations/{candidate['relation_id']}/reviews", json={"decision": "maybe"}
+    )
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "invalid_parameter"
 

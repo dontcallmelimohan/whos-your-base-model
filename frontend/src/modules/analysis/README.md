@@ -1,21 +1,28 @@
-# 生态分析（工作包 D）
+# 生态分析（任务 1）
 
-**归属：工作包 D。** 其他人不要改这个目录；需要改契约请提 Issue。
+**归属：任务 1（模型目录、数据与生态分析）。**
 
 ## 这里放什么
 
-/analysis 页面：指标卡、上游/家族/作者三张榜、口径切换、案例。
-- 接口：GET /api/analysis；
-- 直接下游 ≠ 可达后代，两个口径要在页面上写清楚。
+`/analysis` 页面：按关系类型的核验汇总、补全前后新增边与直接下游数差分、CSV 导出。
 
-## 验收标准
+- 后端：`backend/modules/analysis/`
+- 接口：`GET /api/analysis?view=declared|completed`、`GET /api/diff`、`GET /api/analysis/export.csv`
+- 测试：`tests/analysis/`
 
-- 关掉其他三个模块，本模块的页面 + 接口 + 样例测试仍能跑通；
-- 只读 `shared/`（后端）或 `@/shared`（前端），不 import 其他人的模块；
-- 有自己的测试目录：`backend/tests/analysis/`。
+## v5 首版范围
 
-## 怎么开始
+必须交付：
 
-1. 读 `platform/docs/CONTRACTS.md` 里的接口契约；
-2. 后端在 `backend/modules/analysis/` 建 `router.py`，在 `app.py` 加一行 `include_router`；
-3. 前端在 `src/app/router.ts` 把 `PlaceholderPage` 换成自己的页面组件。
+1. **按关系类型的核验汇总表**（含支持 / 反驳 / 冲突 / 不足的计数）；
+2. **受影响模型的直接下游差分表**（声明图 vs 补全图）；
+3. **CSV 导出**，表头与注释里带快照、筛选条件、证据 ID，便于复算。
+
+扩展项（不阻塞验收）：多级后代、家族排名、大图可视化（后者归任务 2）。
+
+口径要注意：
+
+- 直接下游 ≠ 可达后代，两个数在页面上必须分开写；
+- 只统计与快照同版本的证据，未对齐的单独展示；
+- 补全视图的过滤条件由 `shared/graph_read.py`（任务 2 维护）统一提供，
+  分析模块不另写一套「什么算补全边」。

@@ -1,15 +1,19 @@
 """平台入口：只注册路由，不写业务逻辑。
 
-模块归属（谁改哪一块）：
-    模块一  目录与数据    modules/catalog   /api/imports /api/snapshots /api/datasets
-                                            /api/models /api/model
-    模块二  谱系与可视化  modules/lineage   /api/graph（view=declared|completed）
-    模块三  依赖与核验    modules/evidence  /api/extractions /api/candidates
-                                            /api/relations/{id} /api/relations/{id}/reviews
-    模块四  分析与导出    modules/analysis  /api/analysis /api/diff /api/analysis/export.csv
-    扩展    大图 Galaxy   modules/galaxy    待接入
+模块归属（v5 分工，谁改哪一块）：
+    任务 1  目录、数据与分析  modules/catalog   /api/imports /api/snapshots /api/datasets
+                                                  /api/models /api/model
+                              modules/analysis  /api/analysis /api/diff /api/analysis/export.csv
+    任务 2  谱系与可视化      modules/lineage   /api/graph（view=declared|completed）
+    任务 3  检索与候选提取    modules/evidence/retrieval
+                                                  /api/extractions
+    任务 4  核验与补全        modules/evidence/verification
+                                                  /api/candidates /api/relations/{id}
+                                                  /api/relations/{id}/reviews
+    扩展    大图 Galaxy       modules/galaxy    待接入，不在 v5 验收范围
 
-公共部分（app、shared/*）由 A 维护；其他人只加一行 include_router。
+公共部分（app、shared/contracts.py、shared/db.py）由四人共同约定；
+shared/graph_read.py 由任务 2 维护。其他人只加一行 include_router。
 """
 
 from __future__ import annotations
@@ -59,7 +63,7 @@ def create_app() -> FastAPI:
         title="AI 模型供应链交互与分析平台",
         version="0.2.0",
         description=(
-            "课程大作业骨架。四个工作包：A 数据与框架 / B 目录与小图 / C 大图 / D 生态分析。"
+            "开放模型谱系查询与证据核验平台。四个工作包：目录与数据/分析、谱系图、证据检索、自动核验与补全。"
             "接口契约见 docs/CONTRACTS.md。"
         ),
     )

@@ -1,28 +1,37 @@
-# AI 模型供应链交互与分析平台
+# Who's Your Base Model? — 开放模型谱系查询与证据核验平台
 
-课程大作业（北航 · 开源软件开发导论）。浏览器里查看 Hugging Face 模型的上游与下游、证据来源，以及整个生态的分布。
+课程大作业（北航 · 开源软件开发导论）。输入一个模型，查它基于谁、有哪些下游，
+以及每条关系的**依据**：原文、出处、版本与检索状态。
 
-数据来自 hub-stats 每日 dump（约 326 万个模型、97 万条 `base_model` 父链接），字段口径与布局参考 [model-family-tree](https://github.com/h9-tec/model-family-tree)。
+核心交付是**可追溯的自动依赖核验与补全**：检查公开文档是否支持一条直接上游关系，
+保留出处，并展示补全如何改变图和统计。
 
-## 模块与状态
+数据来自 hub-stats 每日 dump（约 326 万个模型、97 万条 `base_model` 父链接），
+字段口径与布局参考 [model-family-tree](https://github.com/h9-tec/model-family-tree)。
 
-| 工作包 | 内容 | 负责人 | 状态 |
-|---|---|---|---|
-| **1** | 模型目录与数据（`/catalog`、`/data`） | 李默涵 | 可用 |
-| **2** | 谱系探索与可视化（`/lineage`） | 待认领 | 可用，含声明图 / 补全图切换 |
-| **3** | 依赖发现与证据核验（`/evidence`） | 待认领 | 可用，抽取 → 证据 → 核验闭环 |
-| **4** | 生态分析与导出（`/analysis`） | 待认领 | 可用，含补全前后对比与 CSV |
+## 四个工作包
+
+分工与验收见 [docs/平台搭建两周任务分工.md](docs/平台搭建两周任务分工.md)（v5，2026-11-23）。
+
+| 任务 | 负责什么 | 负责人 | 代码 | 状态 |
+|---|---|---|---|---|
+| **1** | 模型目录、数据与生态分析 | 李默涵 | `backend/modules/{catalog,analysis}/`、`src/modules/{catalog,data,analysis}/` | 可用；分析首版待补核验汇总表 |
+| **2** | 谱系探索与可视化 | 待认领 | `backend/modules/lineage/`、`shared/graph_read.py`、`src/modules/lineage/` | 可用；分批展开与点边跳证据待补 |
+| **3** | 证据检索与候选提取 | 待认领 | `backend/modules/evidence/retrieval/` | 本地规则可用；线上补查待实现 |
+| **4** | 自动核验与谱系补全 | 待认领 | `backend/modules/evidence/verification/`、`src/modules/evidence/` | 候选/复核可用；自动判定与批处理待实现 |
+
+任务 3 与任务 4 共用 `backend/modules/evidence/`，按子目录分：检索归 3，
+判定 / 核验记录 / 入图归 4。交接字段与四类结论见
+[docs/EVIDENCE_HANDOFF.md](docs/EVIDENCE_HANDOFF.md)。
 
 顶栏右上角的 ☀/☾ 按钮切换亮/暗主题（也会记住选择）；`?theme=dark` 可直接分享暗色链接。
-
-占位页上写着“接入方式”，认领者按那三步接进来即可。
 
 ## 快速开始
 
 ### 1. 后端
 
 ```bash
-# 在仓库根目录
+# 在仓库根目录（platform/）
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements-dev.txt
 
@@ -53,35 +62,43 @@ cd backend && uvicorn app:app --port 8000
 
 后端会自动托管 `frontend/dist`，一个地址即可演示。
 
+### 4. 测试
+
+```bash
+make test          # 等价于 .venv/bin/python -m pytest -q
+```
+
 ## 目录
 
 ```text
 backend/
   app.py                  只注册路由
-  shared/                 冻结契约：contracts / db / errors / config / migrations
+  shared/                 冻结契约：contracts / db / errors / config / graph_read / migrations
   modules/
-    data/                 A：导入、快照、数据集
-    catalog/              1：导入、搜索、详情、数据集
-    lineage/              2：局部图
-    evidence/             3：抽取、证据、核验
-    analysis/             4：统计、对比、导出
-    galaxy/               扩展：大图（待实现）
+    catalog/              任务 1：导入、搜索、详情、数据集
+    analysis/             任务 1：核验汇总、差分、CSV
+    lineage/              任务 2：局部谱系图
+    evidence/
+      retrieval/          任务 3：来源读取、规则提取、候选与证据
+      verification/       任务 4：判定、核验记录、入图状态、批处理
+    galaxy/               扩展：大图（不在 v5 验收范围）
   scripts/seed.py         初始化数据
-  tests/                  按工作包分目录
 frontend/
   src/app/                导航、路由、占位页
-  src/shared/             请求客户端、类型、样式
+  src/shared/             请求客户端、类型、样式（冻结层）
   src/modules/            每个工作包一个目录
-fixtures/                 公共样例数据（12 条边，含环与 ghost 节点）
-docs/                     契约、部署、第三方声明
+fixtures/                 公共样例数据（冻结层，改动需四人同意）
+tests/                    按工作包分目录：catalog / analysis / lineage /
+                          evidence/retrieval / evidence/verification / integration
+docs/                     契约、证据交接、分工与排期
 ```
 
 ## 接口一览
 
 | 方法与路径 | 归属 | 说明 |
 |---|---|---|
-| `GET /api/health` | 1 | 就绪检查 |
-| `GET /api/meta` | 1 | 上限常量、关系类型 |
+| `GET /api/health` | 公共 | 就绪检查 |
+| `GET /api/meta` | 公共 | 上限常量、关系类型 |
 | `POST /api/imports` | 1 | 导入（fixtures / hubstats / modeltree） |
 | `GET /api/imports` | 1 | 导入记录 |
 | `GET /api/snapshots` | 1 | 数据版本 |
@@ -90,22 +107,48 @@ docs/                     契约、部署、第三方声明
 | `GET /api/models` | 1 | 搜索与分页 |
 | `GET /api/model` | 1 | 模型详情 |
 | `GET /api/graph` | 2 | 局部上下游图（`view=declared\|completed`） |
-| `GET /api/analysis` | 4 | 统计指标（`view=declared\|completed`） |
-| `POST /api/extractions` | 3 | 运行规则抽取，生成候选与证据 |
-| `GET /api/candidates` | 3 | 候选列表（按状态过滤） |
-| `GET /api/relations/{id}` | 3 | 关系详情 + 证据 + 核验历史 |
-| `POST /api/relations/{id}/reviews` | 3 | 确认 / 驳回 / 未知 |
-| `GET /api/diff` | 4 | 补全前后对比 |
-| `GET /api/analysis/export.csv` | 4 | 导出带快照与口径的 CSV |
+| `GET /api/analysis` | 1 | 统计指标（`view=declared\|completed`） |
+| `GET /api/diff` | 1 | 补全前后差分 |
+| `GET /api/analysis/export.csv` | 1 | 带快照与口径的 CSV |
+| `POST /api/extractions` | 3 | 规则抽取，生成候选与证据 |
+| `GET /api/candidates` | 4 | 候选列表（按状态过滤） |
+| `GET /api/relations/{id}` | 4 | 关系详情 + 证据 + 核验历史 |
+| `POST /api/relations/{id}/reviews` | 4 | 人工复核（兜底，自动核验为主） |
 
 详细字段与示例见 [docs/CONTRACTS.md](docs/CONTRACTS.md)。
+
+## 验收主线
+
+用 `stabilityai/stable-video-diffusion-img2vid-xt` 走一遍：
+
+1. 模型详情：快照里五个父模型字段为空；
+2. 核验页运行单模型核验：从 README 找到 `finetuned from` 指向
+   `stabilityai/stable-video-diffusion-img2vid`；
+3. 证据详情：展示原文、上游模型、快照来源，记录支持结论；
+4. 谱系与分析：补全图出现这条微调关系，差分表显示新增边与受影响指标，可导出 CSV。
+
+样例证据（支持 / 反驳 / 来源冲突 / 证据不足）见
+[docs/EVIDENCE_HANDOFF.md](docs/EVIDENCE_HANDOFF.md) 第 5 节。
+
+## 已知缺口（会影响验收）
+
+- **演示数据还没对齐。** 当前 `data/platform.db` 里是 hubstats 快照（约 2.7 万模型），
+  `fixtures/` 是 12 条合成边；两者都没有保存 `modelCard` 正文，
+  也没有 `stabilityai/stable-video-diffusion-img2vid-xt`。
+  v5 主线要求「Model Biome 快照 + README 正文」，需要先导入带 modelCard 的快照，
+  任务 3 的 `sources.py` 才能读真实正文。
+- **自动核验还是占位。** `judge.py` / `batch.py` 只留了入口与结论词汇，
+  当前入图仍靠人工确认；任务 4 接上规则前，差分表只能展示人工确认的边。
+- **分析首版没做完。** 现有 `/analysis` 是生态指标页，v5 要的
+  「按关系类型的核验汇总 + 受影响模型直接下游差分 + 证据 ID 导出」还没接。
 
 ## 文档
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) — 接口契约（冻结层，改动需四人同意）
-- [CONTRIBUTING.md](CONTRIBUTING.md) — 分支、提交、合并规则
+- [docs/EVIDENCE_HANDOFF.md](docs/EVIDENCE_HANDOFF.md) — 任务 3 → 4 的字段、四类结论与入图门槛
+- [CONTRIBUTING.md](CONTRIBUTING.md) — 代码归属、分支、迁移编号
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — 第三方代码与数据许可
-- [docs/平台搭建两周任务分工.md](docs/平台搭建两周任务分工.md) — 四人分工与排期
+- [docs/平台搭建两周任务分工.md](docs/平台搭建两周任务分工.md) — 四人分工与排期（v5）
 
 ## 数据与许可
 

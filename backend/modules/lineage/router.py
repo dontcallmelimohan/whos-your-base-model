@@ -1,4 +1,4 @@
-"""工作包 B：图接口。
+"""任务 2：谱系图接口。
 
 /api/graph 的返回形状直接对齐 Cytoscape 的 elements 语义，
 前端拿到 nodes/edges 后不需要再做字段映射。

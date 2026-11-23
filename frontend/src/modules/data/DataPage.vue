@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 工作包 A：数据管理页。
+ * 任务 1：数据管理页。
  *
  * 职责：导入数据、查看数据版本与范围、检查快照统计、看数据集关联与导入记录。
  * 其他三个工作包的页面不依赖这个页面，只依赖 /api/* 契约。
@@ -111,7 +111,7 @@ onMounted(loadAll)
       <div>
         <h1>数据管理</h1>
         <p class="lede">
-          导入快照、核对数据范围与统计口径。工作包 A 负责本页，以及
+          导入快照、核对数据范围与统计口径。任务 1 负责本页，以及
           <code>/api/imports</code>、<code>/api/snapshots</code>、<code>/api/datasets</code>。
         </p>
       </div>

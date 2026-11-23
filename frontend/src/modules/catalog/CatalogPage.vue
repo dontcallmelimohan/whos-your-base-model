@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 工作包 B：模型目录。
+ * 任务 1：模型目录。
  *
  * 版式参考 model-family-tree 的 leaderboard 页：
  *   标题 + 一行统计副标题 → 全局搜索框 → 筛选 chips → 密集表格（含条形）→ 详情

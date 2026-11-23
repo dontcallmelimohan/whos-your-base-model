@@ -1,4 +1,4 @@
-"""工作包 A：导入器。
+"""任务 1：导入器。
 
 三个数据源：
     fixtures  platform/fixtures/seed.json                     小型样例，四人并行开发用

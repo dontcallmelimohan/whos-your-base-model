@@ -31,7 +31,7 @@ web:
 	cd frontend && npm run dev
 
 test:
-	cd backend && $(PY) -m pytest tests -q
+	$(PY) -m pytest -q
 
 build:
 	cd frontend && npm run build

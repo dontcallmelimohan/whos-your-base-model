@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 工作包 B：供应链小图。
+ * 任务 2：谱系图。
  *
  * 交互参考 EQTY Lab 的 Lineage Explorer（Apache-2.0）：左侧画布 + 右侧详情面板，
  * 但数据源不是它的 .eqtylab manifest，而是本项目 SQLite 里的 base_model 边。

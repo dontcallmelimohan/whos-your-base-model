@@ -1,4 +1,7 @@
-"""pytest 公共夹具：每个测试会话用独立临时数据库，互不污染。"""
+"""pytest 公共夹具：每个测试会话用独立临时数据库，互不污染。
+
+测试在仓库根 tests/ 下按工作包分目录；后端代码根是 backend/。
+"""
 
 from __future__ import annotations
 
@@ -6,7 +9,8 @@ import os
 import sys
 from pathlib import Path
 
-BACKEND_DIR = Path(__file__).resolve().parents[1]
+PLATFORM_DIR = Path(__file__).resolve().parents[1]
+BACKEND_DIR = PLATFORM_DIR / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 

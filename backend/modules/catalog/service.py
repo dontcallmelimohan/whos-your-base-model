@@ -1,4 +1,4 @@
-"""工作包 A：搜索与详情。"""
+"""任务 1：搜索与详情。"""
 
 from __future__ import annotations
 

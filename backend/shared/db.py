@@ -1,11 +1,13 @@
 """SQLite 连接与迁移。
 
-迁移文件放在 shared/migrations/，按文件名排序依次执行，每个人只加自己的编号：
+迁移文件放在 shared/migrations/，按文件名排序依次执行，每个任务只加自己的编号：
 
-    001_init.sql          公共骨架（A 维护）
-    010_catalog_xxx.sql   目录模块（B）
-    020_galaxy_xxx.sql    大图模块（C）
-    030_analysis_xxx.sql  分析模块（D）
+    001_init.sql              公共骨架（已占用）
+    002_evidence.sql          证据表（任务 4，已占用）
+    003_verification_*.sql    任务 4：判定 / 核验记录
+    010_catalog_*.sql         任务 1：目录与数据
+    020_lineage_*.sql         任务 2：谱系
+    030_analysis_*.sql        任务 1：分析
 
 规则：只加表、只给自己的表加字段；改别人的表 = 改契约，要四人同意。
 """
