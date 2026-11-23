@@ -5,7 +5,7 @@
  * 视觉参考 lineage-explorer 的图画布：点状网格底、胶囊节点、
  * 左侧图标方块 + 小字类型标签 + 等宽字体模型名。
  */
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { NODE_H, NODE_W, type Layout } from './layout'
 
@@ -36,14 +36,49 @@ const transform = computed(
   () => `translate(${offset.value.x} ${offset.value.y}) scale(${scale.value})`,
 )
 
+/**
+ * 把某个节点移到画布中心（参考 lineage-explorer 的「点谁谁居中」）。
+ * offset 变化由 .stage 的 transition 负责补间，所以是滑过去的。
+ */
+function centerOn(id: string, scaleTarget = scale.value) {
+  const node = props.layout.nodes.find((item) => item.id === id)
+  if (!node) return
+  const bounds = props.layout.bounds
+  const cx = bounds.x + Math.max(bounds.width, 320) / 2
+  const cy = bounds.y + Math.max(bounds.height, 240) / 2
+  scale.value = scaleTarget
+  offset.value = { x: cx - scaleTarget * node.x, y: cy - scaleTarget * node.y }
+}
+
+function handleNodeClick(id: string) {
+  centerOn(id)
+  emit('select-node', id)
+}
+
+// 换根后自动把新的根居中
+watch(
+  () => props.root,
+  (id) => {
+    scale.value = 1
+    nextTick(() => centerOn(id, 1))
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.layout,
+  () => {
+    nextTick(() => centerOn(props.root, scale.value))
+  },
+)
+
 function zoom(factor: number) {
   const next = Math.min(2.2, Math.max(0.45, scale.value * factor))
-  scale.value = Number(next.toFixed(2))
+  centerOn(props.root, Number(next.toFixed(2)))
 }
 
 function reset() {
-  scale.value = 1
-  offset.value = { x: 0, y: 0 }
+  centerOn(props.root, 1)
 }
 
 function onWheel(event: WheelEvent) {
@@ -117,7 +152,7 @@ function shortId(id: string, max = 21): string {
           :key="node.id"
           class="node"
           :style="{ transform: `translate(${node.x}px, ${node.y}px)` }"
-          @click.stop="emit('select-node', node.id)"
+          @click.stop="handleNodeClick(node.id)"
           @dblclick.stop="emit('focus-node', node.id)"
         >
           <rect

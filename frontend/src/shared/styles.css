@@ -907,7 +907,7 @@ tr:last-child td {
 
 /* 画布整体缩放/拖拽 */
 .stage {
-  transition: transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
   transform-origin: center;
 }
 
