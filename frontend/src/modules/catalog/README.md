@@ -1,27 +1,7 @@
 # 模型目录（任务 1）
 
-**归属：任务 1（模型目录、数据与生态分析）。** 其他人不要改这个目录；需要改契约先提 Issue。
+`/catalog` 的衍生排行可以按全部后代、近 90 天、直接下游和衍生类型排序。排行按选定快照的声明关系计算，全部后代跨层去重。切换到「全部模型」后，可以按名称搜索、分页、隐藏占位上游和切换快照。详情展示模型属性、声明的直接上游、模型卡中的数据集与许可证字段，并提供 Hugging Face 仓库链接。
 
-## 这里放什么
+`GET /api/models` 和 `GET /api/model` 支持 `snapshot_id`。详情接口的 `declared_parents` 包含上游 ID、关系类型和来源字段，`license_declaration` 保存有记录的模型卡许可证字段。证据检索可使用模型 ID 和快照定位原仓库。
 
-`/catalog` 页面：搜索、筛选、分页、详情面板、数据集关联、跳到谱系图。
-
-- 后端：`backend/modules/catalog/`（`router.py`、`service.py`、`importer.py`）
-- 接口：`GET /api/models`、`GET /api/model`、`POST /api/imports`、`GET /api/snapshots`、`GET /api/datasets`
-- 测试：`tests/catalog/`
-
-## v5 对任务 1 的要求
-
-- 能搜到真实模型，并定位它的证据材料（快照、modelCard、仓库文件索引）；
-- 向任务 3 提供模型 ID、快照和本地材料索引，向任务 4 提供声明边与快照；
-- 自动补边后能看同快照差分，导出包含快照、筛选条件和证据 ID；
-- 分析首版只做**按关系类型的核验汇总、受影响模型的直接下游差分、CSV**；
-  多级后代与家族排名是扩展项，图形可视化归任务 2。
-
-目录只管「有哪些模型、哪些声明」，不判定关系真伪。
-
-## 怎么接
-
-1. 读 `docs/CONTRACTS.md` 的接口契约；
-2. 只 import `shared/`（后端）与 `@/shared`（前端）；
-3. 页面已接进 `src/app/router.ts`，新增路由也只改这一行。
+后端代码位于 `backend/modules/catalog/`，测试位于 `tests/catalog/`。

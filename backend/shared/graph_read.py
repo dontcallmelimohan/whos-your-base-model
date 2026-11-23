@@ -15,24 +15,24 @@ from shared import config
 from shared.errors import not_found
 
 
+_SNAPSHOT_ORDER = """
+    ORDER BY (s.source = 'fixtures/seed.json'),
+             s.snapshot_date DESC,
+             (s.source LIKE 'hubstats:%' AND length(substr(s.source, 10)) = 40
+              AND substr(s.source, 10) NOT GLOB '*[^0-9a-f]*') DESC,
+             (SELECT count(*) FROM models m WHERE m.snapshot_id = s.id) DESC,
+             s.created_at DESC, s.id
+"""
+
+
 def list_snapshots(conn: sqlite3.Connection) -> list[sqlite3.Row]:
-    """与 default_snapshot_id 同一排序：日期最新，同一天取模型更多的。"""
-    return conn.execute(
-        """SELECT s.* FROM snapshots s
-           ORDER BY s.snapshot_date DESC,
-                    (SELECT count(*) FROM models m WHERE m.snapshot_id = s.id) DESC,
-                    s.created_at DESC"""
-    ).fetchall()
+    """和默认快照同序，样例靠后，同日期优先使用固定到上游提交的快照。"""
+    return conn.execute("SELECT s.* FROM snapshots s" + _SNAPSHOT_ORDER).fetchall()
 
 
 def default_snapshot_id(conn: sqlite3.Connection) -> str | None:
-    """默认快照：日期最新，同一天则取模型更多的那个（避免样例盖掉真实数据）。"""
     row = conn.execute(
-        """SELECT s.id AS id FROM snapshots s
-           ORDER BY s.snapshot_date DESC,
-                    (SELECT count(*) FROM models m WHERE m.snapshot_id = s.id) DESC,
-                    s.created_at DESC
-           LIMIT 1"""
+        "SELECT s.id FROM snapshots s" + _SNAPSHOT_ORDER + " LIMIT 1"
     ).fetchone()
     return row["id"] if row else None
 

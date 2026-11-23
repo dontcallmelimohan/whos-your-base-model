@@ -6,10 +6,13 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, FastAPI, Query
+from pydantic import BaseModel, Field
 
 from modules.catalog import data_service as service
+from modules.catalog.hubstats_sync import sync_hubstats
 from modules.catalog.importer import run_import
 from shared import graph_read
 from shared.contracts import (
@@ -21,9 +24,28 @@ from shared.contracts import (
     SnapshotOut,
     SnapshotStats,
 )
-from shared.db import get_conn
+from shared.db import get_conn, init_database
 
-router = APIRouter(prefix="/api", tags=["data"])
+@asynccontextmanager
+async def catalog_lifespan(_: FastAPI):
+    init_database()
+    yield
+
+
+router = APIRouter(prefix="/api", tags=["data"], lifespan=catalog_lifespan)
+
+
+class HubStatsSyncRequest(BaseModel):
+    limit: int | None = Field(default=None, ge=0, description="默认 20000，0 表示全量")
+
+
+class HubStatsSyncResult(ImportResult):
+    updated: bool
+
+
+@router.post("/hubstats/sync", response_model=HubStatsSyncResult)
+def sync_latest_hubstats(payload: HubStatsSyncRequest) -> HubStatsSyncResult:
+    return HubStatsSyncResult(**sync_hubstats(payload.limit))
 
 
 @router.post("/imports", response_model=ImportResult)

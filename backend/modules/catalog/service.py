@@ -3,10 +3,34 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 from shared import graph_read
 from shared.contracts import DatasetLink, ModelDetail, ModelSummary
 from shared.errors import invalid, not_found
+
+
+CatalogSort = Literal["downloads", "downloads_all", "likes", "created", "model_id"]
+
+
+class LicenseDeclaration(BaseModel):
+    license: str | None
+    license_name: str | None
+    license_link: str | None
+    source_field: str = "cardData"
+
+
+class DeclaredParent(BaseModel):
+    model_id: str
+    relation_type: str
+    source_field: str | None
+
+
+class CatalogDetail(ModelDetail):
+    license_declaration: LicenseDeclaration | None = None
+    declared_parents: list[DeclaredParent] = Field(default_factory=list)
 
 
 def _escape_like(text: str) -> str:
@@ -36,6 +60,8 @@ def search_models(
     page_size: int,
     family: str | None = None,
     include_ghost: bool = True,
+    sort: CatalogSort = "downloads",
+    ascending: bool = False,
 ) -> tuple[list[ModelSummary], int]:
     if page < 1:
         raise invalid("page 必须 >= 1", {"page": page})
@@ -56,9 +82,14 @@ def search_models(
     total = int(
         conn.execute(f"SELECT count(*) AS c FROM models WHERE {where}", params).fetchone()["c"]
     )
+    column = {
+        "downloads": "downloads", "downloads_all": "downloads_all", "likes": "likes",
+        "created": "created", "model_id": "model_id",
+    }[sort]
+    direction = "ASC" if ascending else "DESC"
     rows = conn.execute(
         f"""SELECT * FROM models WHERE {where}
-            ORDER BY (downloads IS NULL), downloads DESC, model_id
+            ORDER BY {column} {direction} NULLS LAST, model_id
             LIMIT ? OFFSET ?""",
         [*params, page_size, (page - 1) * page_size],
     ).fetchall()
@@ -66,7 +97,7 @@ def search_models(
     return [_summary(row) for row in rows], total
 
 
-def model_detail(conn: sqlite3.Connection, snapshot_id: str, model_id: str) -> ModelDetail:
+def model_detail(conn: sqlite3.Connection, snapshot_id: str, model_id: str) -> CatalogDetail:
     row = graph_read.get_model(conn, snapshot_id, model_id)
     if row is None:
         raise not_found(f"模型不存在: {model_id}", {"snapshot_id": snapshot_id})
@@ -79,8 +110,19 @@ def model_detail(conn: sqlite3.Connection, snapshot_id: str, model_id: str) -> M
         )
         for link in graph_read.dataset_links(conn, snapshot_id, model_id)
     ]
-    return ModelDetail(
+    declared_parents = [
+        DeclaredParent(model_id=edge["parent_id"], relation_type=edge["relation_type"],
+                       source_field=edge["source_field"])
+        for edge in graph_read.neighbours(conn, snapshot_id, [model_id], "upstream")
+    ]
+    license_row = conn.execute(
+        "SELECT license, license_name, license_link FROM catalog_licenses WHERE snapshot_id = ? AND model_id = ?",
+        (snapshot_id, model_id),
+    ).fetchone()
+    return CatalogDetail(
         **_summary(row).model_dump(),
         snapshot_id=snapshot_id,
         datasets=links,
+        declared_parents=declared_parents,
+        license_declaration=LicenseDeclaration(**dict(license_row)) if license_row else None,
     )

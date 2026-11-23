@@ -51,12 +51,16 @@
 
 ## 2. 数据（任务 1）
 
+### POST /api/hubstats/sync
+
+请求体为 `{"limit": 20000}`，缺省采用 20,000，0 表示全量。检查上游模型文件的最新提交，按版本和范围存为独立快照。同步结束后返回导入结果及 `updated`，重复同步同一版本和范围时该字段为 `false`。可从快照的 `source` 获得上游提交 SHA，`input_hash` 为文件 SHA-256。并行的同步请求返回 409。
+
 ### POST /api/imports
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `source` | `fixtures` \| `hubstats` \| `modeltree` | 数据源 |
-| `limit` | int? | 最多导入多少个模型（hubstats / modeltree 有效） |
+| `limit` | int? | hubstats 中为模型样本上限，0 表示全量。modeltree 中为上游个数上限。 |
 | `snapshot_id` | string? | 不传则用默认版本号 |
 
 返回：
@@ -71,7 +75,7 @@
 
 ### GET /api/snapshots
 
-`ItemList<Snapshot>`，按 `snapshot_date` 倒序。
+`ItemList<Snapshot>`，按默认快照顺序返回。样例靠后，同日期优先有上游提交 SHA 的快照。
 
 ### GET /api/snapshots/{snapshot_id}/stats
 
@@ -86,6 +90,10 @@
 `ItemList<{dataset_id, model_count, source_field}>`，按关联模型数倒序。
 
 ## 3. 目录（任务 1）
+
+### GET /api/catalog/leaderboard
+
+查询参数支持 `snapshot_id`、`q`、`family`、`include_ghost`、`page`、`page_size`、`sort` 和 `ascending`。返回 `items`、匹配总数 `total` 和该快照可筛选的 `families`。榜单只使用声明关系。每个模型的全部后代跨路径去重，近 90 天以快照日期为基准。微调、适配器、量化、合并按各模型的直接声明关系计数。
 
 ### GET /api/models?q=&snapshot_id=&family=&include_ghost=&page=&page_size=
 

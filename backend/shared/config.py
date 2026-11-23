@@ -49,6 +49,7 @@ DEFAULT_IMPORT_LIMIT = 20000
 
 # 处理规则版本：改了导入逻辑就升这个号，写进 snapshot 元数据
 RULE_VERSION = "rules-v2"
+HUBSTATS_RULE_VERSION = "catalog-v3"
 
 # 关系类型，与 model-family-tree 一致
 RELATION_TYPES = ("finetune", "adapter", "quantized", "merge", "unknown")

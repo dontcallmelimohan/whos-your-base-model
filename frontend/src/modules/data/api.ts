@@ -36,3 +36,9 @@ export const postImport = (source: string, limit: number | null, snapshotId?: st
     method: 'POST',
     body: JSON.stringify({ source, limit, snapshot_id: snapshotId }),
   })
+
+export const syncHubStats = (limit: number) =>
+  api<ImportResult & { updated: boolean }>('/api/hubstats/sync', {
+    method: 'POST',
+    body: JSON.stringify({ limit }),
+  })

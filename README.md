@@ -37,13 +37,26 @@ pip install -r backend/requirements-dev.txt
 
 cd backend
 python -m scripts.seed                       # 样例数据（秒级，够开发）
-# 或真实数据（需要仓库外的 models.parquet）：
-# python -m scripts.seed --source hubstats --limit 20000
+# 或直接同步 Hugging Face 上最新的模型快照
+# python -m scripts.sync_hubstats --limit 20000
 
 uvicorn app:app --reload --port 8000
 ```
 
 打开 <http://127.0.0.1:8000/docs> 看接口文档。
+
+### 同步 hub-stats
+
+在「数据管理」选择 Hugging Face 最新快照并点击「同步最新快照」，或从 `backend/` 运行：
+
+```bash
+../.venv/bin/python -m scripts.sync_hubstats --limit 20000
+# 导入全量模型时传 --limit 0
+```
+
+默认按下载量取前 20,000 个模型，另外收录它们的直接上游。全量模式也包含没有声明上游的模型。首次同步或上游版本变化时会下载约 1.8 GB。系统按 `models.parquet` 的提交 SHA 下载并校验 SHA-256。同一版本和范围重复同步会跳过下载。新快照成功入库后才可见，原有快照可继续在目录和数据页查看。基线读取 `baseModels` 和旧式 `base_model:` 标签，目录同时收录模型卡元数据中的许可证和数据集声明。
+
+需要定期检查时，可以把同一命令交给系统的任务计划程序，每天运行一次。定时任务和服务应使用同一个数据库路径（默认 `platform/data/platform.db`，或通过 `PLATFORM_DB` 指定）。数据库会保留各次成功同步的快照。开发与日常同步可用限量模式，一个全量快照的 SQLite 存储约 2 GB。线下也可以通过 `scripts.seed --source hubstats` 导入已有的本地 `models.parquet`。
 
 ### 2. 前端
 
@@ -132,9 +145,7 @@ docs/                     契约、证据交接、分工与排期
 
 ## 已知缺口（会影响验收）
 
-- **演示数据还没对齐。** 当前 `data/platform.db` 里是 hubstats 快照（约 2.7 万模型），
-  `fixtures/` 是 12 条合成边；两者都没有保存 `modelCard` 正文，
-  也没有 `stabilityai/stable-video-diffusion-img2vid-xt`。
+- **演示数据还没对齐。** hub-stats 提供结构化模型卡字段，证据演示仍需带 README 正文的样本。
   v5 主线要求「Model Biome 快照 + README 正文」，需要先导入带 modelCard 的快照，
   任务 3 的 `sources.py` 才能读真实正文。
 - **自动核验还是占位。** `judge.py` / `batch.py` 只留了入口与结论词汇，
@@ -148,7 +159,7 @@ docs/                     契约、证据交接、分工与排期
 - [docs/EVIDENCE_HANDOFF.md](docs/EVIDENCE_HANDOFF.md) — 任务 3 → 4 的字段、四类结论与入图门槛
 - [CONTRIBUTING.md](CONTRIBUTING.md) — 代码归属、分支、迁移编号
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — 第三方代码与数据许可
-- [docs/平台搭建两周任务分工.md](docs/平台搭建两周任务分工.md) — 四人分工与排期（v5）
+- [docs/平台搭建两周任务分工.md](docs/平台搭建两周任务分工.md) — 四人分工与排期
 
 ## 数据与许可
 

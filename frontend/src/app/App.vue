@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 
 import { api } from '@/shared/api'
 import { theme, toggleTheme } from '@/shared/theme'
 import type { Health } from '@/shared/types'
 
+const route = useRoute()
 const health = ref<Health | null>(null)
 const offline = ref(false)
 
@@ -62,8 +63,8 @@ onMounted(refresh)
       </div>
     </header>
 
-    <main class="content">
-      <RouterView />
+    <main class="content" :class="{ 'content-wide': route.name === 'catalog' || route.name === 'data' }">
+      <RouterView @data-updated="refresh" />
       <p class="footnote">
         数据来源 hub-stats（Apache-2.0）· 字段口径与界面参考
         <a href="https://github.com/h9-tec/model-family-tree" target="_blank" rel="noreferrer">model-family-tree</a>

@@ -8,6 +8,7 @@
 - 许可：MIT License，Copyright (c) 2026 Hesham Haroon
 - 使用范围：
   - 关系类型与统计口径（`finetune` / `adapter` / `quantized` / `merge` / `unknown`，`direct` 与 `total` 后代数，family、ghost 概念）；
+  - 模型目录的衍生排行榜改编自 `site/app.js` 中的排序、筛选、分页与相对数值条，后代去重改编自 `modeltree/graph.py`。数据页的关系类型配色沿用 `site/app.js`。
   - 后续大图模块（`backend/modules/galaxy/`）将改编其 `site/galaxy.js` 与 `modeltree/galaxy.py` 的布局逻辑。
 - MIT 全文：
 

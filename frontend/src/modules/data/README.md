@@ -1,18 +1,7 @@
 # 数据管理（任务 1）
 
-**归属：任务 1（模型目录、数据与生态分析）。**
+`/data` 支持同步最新 hub-stats 模型快照，也保留本地 Parquet 和样例导入入口。页面展示快照范围、原始提交、数据统计和导入记录。
 
-## 这里放什么
-
-`/data` 页面：导入（fixtures / hubstats / modeltree）、快照列表、快照概况、数据集关联。
-
-- 后端：`backend/modules/catalog/data_router.py`、`data_service.py`、`importer.py`
-- 接口：`POST /api/imports`、`GET /api/imports`、`GET /api/snapshots`、
-  `GET /api/snapshots/{id}/stats`、`GET /api/datasets`
-- 测试：`tests/catalog/test_data.py`
-
-## v5 相关约定
-
-- 快照 ID 是后面所有证据与差分的锚点：核验记录、证据 revision、CSV 都要带；
-- 导入只写声明（`is_baseline = 1`），核验新增边由任务 4 写入，不在这里混进去；
-- 换数据版本后，任务 1/2 的图和统计必须用同一个快照，避免「图变了统计没变」。
+- 同步使用 `POST /api/hubstats/sync`，也可以从后端运行 `python -m scripts.sync_hubstats`。
+- 每份快照有独立 ID，可用作谱系、证据和差分的版本锚点。导入只写声明边（`is_baseline = 1`）。
+- 接口见 `docs/CONTRACTS.md`，测试位于 `tests/catalog/`。

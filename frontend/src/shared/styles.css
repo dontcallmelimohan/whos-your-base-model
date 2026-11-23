@@ -164,6 +164,13 @@ a:hover {
   flex: 1;
 }
 
+.content.content-wide {
+  max-width: 1680px;
+  min-width: 0;
+  padding-inline: clamp(16px, 3vw, 48px);
+  padding-top: clamp(18px, 2.5vw, 32px);
+}
+
 h1 {
   font-size: clamp(26px, 3vw, 34px);
   font-weight: 650;
@@ -246,6 +253,27 @@ h2 {
     height: auto;
     padding: 10px 16px;
     gap: 12px;
+  }
+  .topbar .nav {
+    order: 3;
+    flex-basis: 100%;
+    min-width: 0;
+    gap: clamp(12px, 3vw, 26px);
+    overflow-x: auto;
+  }
+  .topbar .nav a {
+    padding: 5px 0 7px;
+    white-space: nowrap;
+  }
+  .topbar .status {
+    max-width: 100%;
+    flex-wrap: nowrap;
+  }
+  .topbar .status .badge {
+    max-width: min(48vw, 320px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .content {
     padding: 28px 16px 56px;

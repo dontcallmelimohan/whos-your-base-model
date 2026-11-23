@@ -29,7 +29,7 @@ def main() -> None:
         choices=["fixtures", "hubstats", "modeltree"],
         help="fixtures=样例 / hubstats=hub-stats dump / modeltree=model-family-tree 派生数据",
     )
-    parser.add_argument("--limit", type=int, default=None, help="最多导入多少个模型")
+    parser.add_argument("--limit", type=int, default=None, help="最多导入多少个模型（hubstats 中 0 表示全量）")
     parser.add_argument("--snapshot-id", default=None)
     args = parser.parse_args()
 
