@@ -24,7 +24,6 @@
 判定 / 核验记录 / 入图归 4。交接字段与四类结论见
 [docs/EVIDENCE_HANDOFF.md](docs/EVIDENCE_HANDOFF.md)。
 
-顶栏右上角的 ☀/☾ 按钮切换亮/暗主题（也会记住选择）；`?theme=dark` 可直接分享暗色链接。
 
 ## 快速开始
 
