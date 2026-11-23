@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 
 import DataPage from '@/modules/data/DataPage.vue'
 import AnalysisPage from '@/modules/analysis/AnalysisPage.vue'
+import CatalogPage from '@/modules/catalog/CatalogPage.vue'
 import LineagePage from '@/modules/lineage/LineagePage.vue'
 import PlaceholderPage from './PlaceholderPage.vue'
 
@@ -27,12 +28,8 @@ const router = createRouter({
     {
       path: '/catalog',
       name: 'catalog',
-      component: PlaceholderPage,
-      meta: {
-        title: '模型目录',
-        owner: 'B',
-        desc: '搜索、分页、详情、数据集关联。组件放在 src/modules/catalog/。',
-      },
+      component: CatalogPage,
+      meta: { title: '模型目录', owner: 'B' },
     },
     {
       path: '/lineage',

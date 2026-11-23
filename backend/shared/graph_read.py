@@ -16,8 +16,12 @@ from shared.errors import not_found
 
 
 def list_snapshots(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """与 default_snapshot_id 同一排序：日期最新，同一天取模型更多的。"""
     return conn.execute(
-        "SELECT * FROM snapshots ORDER BY snapshot_date DESC, created_at DESC"
+        """SELECT s.* FROM snapshots s
+           ORDER BY s.snapshot_date DESC,
+                    (SELECT count(*) FROM models m WHERE m.snapshot_id = s.id) DESC,
+                    s.created_at DESC"""
     ).fetchall()
 
 

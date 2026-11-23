@@ -34,6 +34,17 @@ export interface ModelSummary {
   ghost: boolean
 }
 
+export interface DatasetLink {
+  dataset_id: string
+  source_field: string | null
+  raw_value: string | null
+}
+
+export interface ModelDetail extends ModelSummary {
+  snapshot_id: string
+  datasets: DatasetLink[]
+}
+
 export interface ImportRecord {
   id: number
   snapshot_id: string
