@@ -1,0 +1,69 @@
+"""SQLite 连接与迁移。
+
+迁移文件放在 shared/migrations/，按文件名排序依次执行，每个人只加自己的编号：
+
+    001_init.sql          公共骨架（A 维护）
+    010_catalog_xxx.sql   目录模块（B）
+    020_galaxy_xxx.sql    大图模块（C）
+    030_analysis_xxx.sql  分析模块（D）
+
+规则：只加表、只给自己的表加字段；改别人的表 = 改契约，要四人同意。
+"""
+
+from __future__ import annotations
+
+import sqlite3
+from collections.abc import Iterator
+from pathlib import Path
+
+from shared import config
+
+MIGRATIONS_DIR = Path(__file__).with_name("migrations")
+
+
+def connect(path: Path | None = None) -> sqlite3.Connection:
+    target = path or config.db_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(target, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    return conn
+
+
+def migration_files() -> list[Path]:
+    return sorted(MIGRATIONS_DIR.glob("*.sql"))
+
+
+def init_schema(conn: sqlite3.Connection) -> list[str]:
+    """执行所有迁移，返回已执行的文件名（幂等：全部用 IF NOT EXISTS）。"""
+    applied: list[str] = []
+    for path in migration_files():
+        conn.executescript(path.read_text(encoding="utf-8"))
+        applied.append(path.name)
+    conn.commit()
+    return applied
+
+
+def init_database(path: Path | None = None) -> Path:
+    target = path or config.db_path()
+    conn = connect(target)
+    try:
+        init_schema(conn)
+    finally:
+        conn.close()
+    return target
+
+
+def get_conn() -> Iterator[sqlite3.Connection]:
+    """FastAPI 依赖：每个请求一个连接，用完关闭。"""
+    conn = connect()
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+def tables_present(conn: sqlite3.Connection) -> set[str]:
+    rows = conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+    return {row["name"] for row in rows}

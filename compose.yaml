@@ -1,0 +1,16 @@
+# 一条命令起演示环境：docker compose up --build
+# 首次启动后执行一次导入：
+#   docker compose exec api python -m scripts.seed
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      PLATFORM_DATA_DIR: /data
+      PLATFORM_FIXTURES: /app/../fixtures
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
