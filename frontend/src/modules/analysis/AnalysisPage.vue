@@ -2,9 +2,10 @@
 /**
  * 工作包 D：生态分析。
  *
- * 这一页回答的是「整体长什么样」，不是「某个模型的邻居是谁」：
- *   规模 → 集中度 → 关系构成 → 谁在中心 → 谁在垄断
- * 每个数字旁边都标口径，避免被问住。
+ * 版式参考 Open Model Evolution（Dash + Mantine，未声明许可，仅借结构）：
+ *   顶部数据说明 → 居中标题与导语 → 左侧口径切换（每项带说明）→ 右侧榜单 → 底部口径定义
+ *
+ * 这一页回答「整体长什么样」：规模、集中度、关系构成、谁在中心。
  */
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -14,10 +15,17 @@ import type { AnalysisResponse } from '@/shared/types'
 
 import { fetchAnalysis } from './api'
 
+type Tab = 'upstream' | 'family'
+type Metric = 'direct' | 'total'
+
 const router = useRouter()
 const data = ref<AnalysisResponse | null>(null)
 const loading = ref(false)
 const error = ref('')
+
+const tab = ref<Tab>('upstream')
+const metric = ref<Metric>('direct')
+const topN = ref(10)
 
 const typeRows = computed(() => {
   if (!data.value) return []
@@ -28,25 +36,35 @@ const typeRows = computed(() => {
   }))
 })
 
-const familyRows = computed(() => {
+const upstreamRows = computed(() => {
   if (!data.value) return []
-  const max = Math.max(...data.value.family_distribution.map((f) => f.models), 1)
-  return data.value.family_distribution.map((item) => ({
-    ...item,
-    percent: Math.round((item.models / max) * 100),
-  }))
+  const key = metric.value
+  return [...data.value.top_upstream]
+    .sort((a, b) => (b[key] as number) - (a[key] as number) || a.model_id.localeCompare(b.model_id))
+    .slice(0, topN.value)
 })
 
-const maxDirect = computed(() =>
-  Math.max(...(data.value?.top_upstream.map((u) => u.direct) ?? [1]), 1),
-)
+const familyRows = computed(() => {
+  if (!data.value) return []
+  const total = data.value.metrics.model_count || 1
+  return [...data.value.family_distribution]
+    .slice(0, topN.value)
+    .map((item) => ({ ...item, share: item.models / total }))
+})
 
-function num(value: number | undefined | null): string {
-  return value === null || value === undefined ? '—' : value.toLocaleString()
-}
+const maxUpstream = computed(() =>
+  Math.max(...upstreamRows.value.map((row) => row[metric.value] as number), 1),
+)
+const maxFamily = computed(() => Math.max(...familyRows.value.map((row) => row.models), 1))
+
+const share = (value: number, total: number) => (total ? value / total : 0)
 
 function pct(value: number): string {
   return `${(value * 100).toFixed(1)}%`
+}
+
+function num(value: number | undefined | null): string {
+  return value === null || value === undefined ? '—' : value.toLocaleString()
 }
 
 function openInLineage(modelId: string) {
@@ -70,166 +88,250 @@ onMounted(load)
 
 <template>
   <section>
-    <div class="page-head">
-      <div>
-        <h1>生态分析</h1>
-        <p class="lede">
-          把小图里的结构汇总成可比较的数字：规模、集中度、关系构成与上游排名。
-          每个指标旁边标注口径，便于复算。
-        </p>
-      </div>
-      <div class="row">
-        <span v-if="data" class="badge">{{ data.snapshot_id }}</span>
-        <span v-if="data" class="badge">规则 {{ data.rule_version }}</span>
-        <button class="ghost" :disabled="loading" @click="load">
-          {{ loading ? '刷新中…' : '刷新' }}
-        </button>
-      </div>
+    <!-- 数据说明 -->
+    <div v-if="data" class="note">
+      <span class="note-icon">i</span>
+      <span>
+        指标基于公开的 Hugging Face 模型元数据（hub-stats，Apache-2.0）计算，关系来自模型卡声明的
+        <code>base_model</code> 标签。当前快照 <code>{{ data.snapshot_id }}</code>，处理规则
+        <code>{{ data.rule_version }}</code>。
+      </span>
     </div>
+
+    <!-- 标题与导语 -->
+    <header class="analysis-head">
+      <h1>生态分析</h1>
+      <p class="lede">
+        把小图里的结构汇总成可比较的数字：规模、集中度、关系构成与上游排名。
+        回答四个问题——生态多大、是否集中、大家在做什么、谁在中心。
+      </p>
+    </header>
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="!data && loading" class="panel muted small">正在计算…</div>
 
     <template v-if="data">
-      <!-- 规模 -->
-      <h2>规模</h2>
-      <div class="grid grid-4" style="margin-bottom: 24px">
-        <div class="stat">
-          <div class="stat-label">模型</div>
-          <div class="stat-value">{{ num(data.metrics.model_count) }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">关系</div>
-          <div class="stat-value">{{ num(data.metrics.edge_count) }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">有下游的上游</div>
-          <div class="stat-value">{{ num(data.metrics.parent_count) }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">根模型（无上游）</div>
-          <div class="stat-value">{{ num(data.metrics.root_count) }}</div>
-        </div>
-      </div>
-
-      <!-- 集中度 -->
-      <h2>集中度</h2>
-      <div class="grid grid-4" style="margin-bottom: 10px">
-        <div class="stat">
-          <div class="stat-label">HHI（×10000）</div>
-          <div class="stat-value">{{ data.concentration.hhi_scaled.toFixed(1) }}</div>
-          <div class="faint small">越低越分散，10000 = 完全垄断</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Top-10 份额</div>
-          <div class="stat-value">{{ pct(data.concentration.top10_share) }}</div>
-          <div class="faint small">前 10 上游占全部关系的比例</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">断链率</div>
-          <div class="stat-value">{{ pct(data.data_quality.ghost_ratio) }}</div>
-          <div class="faint small">
-            {{ num(data.data_quality.ghost_parent_count) }} 个上游属性未收录
+      <div class="analysis-body">
+        <!-- 左：筛选与口径 -->
+        <aside class="filter-panel">
+          <div class="filter-block">
+            <div class="filter-label">
+              排名口径
+              <span class="tip" title="直接下游只数一跳；可达后代沿关系递归，含间接继承">ⓘ</span>
+            </div>
+            <div class="segmented">
+              <button :class="{ active: metric === 'direct' }" @click="metric = 'direct'">
+                直接下游
+              </button>
+              <button :class="{ active: metric === 'total' }" @click="metric = 'total'">
+                可达后代
+              </button>
+            </div>
+            <p class="filter-desc">
+              {{
+                metric === 'direct'
+                  ? '统计与某个上游直接相连的模型数，反映「被直接微调或量化」的次数。'
+                  : '统计沿关系递归能到达的全部模型，反映「间接继承」的总体规模。'
+              }}
+            </p>
           </div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">家族</div>
-          <div class="stat-value">{{ num(data.metrics.family_count) }}</div>
-          <div class="faint small">按派生数据的 family 字段</div>
-        </div>
-      </div>
-      <p class="faint small" style="margin-bottom: 8px">
-        口径：HHI = Σ (上游直接下游数 ÷ 关系总数)² × 10000；份额分母为关系总数
-        {{ num(data.metrics.edge_count) }}。关系方向统一为「上游 → 下游」。
-      </p>
-      <p v-if="data.data_quality.ghost_ratio > 0.3" class="alert alert-info small" style="margin-bottom: 24px">
-        断链率偏高是导入范围造成的：当前快照只收了下载量靠前的一部分模型，
-        它们的上游大多不在集合内，因此以「属性未收录」的占位节点出现。
-        这不是生态本身的数据缺失，换全量快照后会显著下降。
-      </p>
 
-      <div class="grid grid-2">
-        <!-- 类型构成 -->
-        <div class="panel">
-          <h2>关系类型构成</h2>
-          <div v-for="row in typeRows" :key="row.type" class="bar-row">
-            <span class="label">{{ row.type }}</span>
-            <span class="bar"><span :style="{ width: row.percent + '%' }"></span></span>
-            <span class="num">{{ row.count.toLocaleString() }}</span>
+          <div class="filter-block">
+            <div class="filter-label">显示条数</div>
+            <div class="segmented">
+              <button :class="{ active: topN === 10 }" @click="topN = 10">Top 10</button>
+              <button :class="{ active: topN === 20 }" @click="topN = 20">Top 20</button>
+            </div>
           </div>
-          <p class="faint small" style="margin: 14px 0 0">
-            按带类型的关系条数计，与「唯一上下游对」是两个口径。
-          </p>
-        </div>
 
-        <!-- 家族 -->
-        <div class="panel">
-          <h2>家族规模 Top {{ familyRows.length }}</h2>
-          <div v-for="row in familyRows" :key="row.family" class="bar-row">
-            <span class="label">{{ row.family }}</span>
-            <span class="bar"><span :style="{ width: row.percent + '%' }"></span></span>
-            <span class="num">{{ row.models.toLocaleString() }}</span>
+          <div class="filter-block">
+            <div class="filter-label">口径常量</div>
+            <dl class="mini-kv">
+              <dt>关系总数</dt>
+              <dd>{{ num(data.metrics.edge_count) }}</dd>
+              <dt>上游总数</dt>
+              <dd>{{ num(data.metrics.parent_count) }}</dd>
+              <dt>唯一上下游对</dt>
+              <dd>{{ num(data.metrics.unique_pair_count) }}</dd>
+              <dt>模型总数</dt>
+              <dd>{{ num(data.metrics.model_count) }}</dd>
+            </dl>
           </div>
-          <p v-if="!familyRows.length" class="muted small">当前快照没有家族字段。</p>
-        </div>
-      </div>
+        </aside>
 
-      <!-- 上游榜 -->
-      <div class="panel">
-        <h2>上游 Top 10 · 按直接下游数</h2>
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 36px">#</th>
-              <th>模型</th>
-              <th>家族</th>
-              <th class="num" style="width: 110px">直接下游</th>
-              <th class="num" style="width: 110px">可达后代</th>
-              <th style="width: 140px"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(row, index) in data.top_upstream" :key="row.model_id">
-              <td class="faint">{{ index + 1 }}</td>
-              <td><code>{{ row.model_id }}</code></td>
-              <td class="muted">{{ row.family ?? '—' }}</td>
-              <td class="num">{{ row.direct.toLocaleString() }}</td>
-              <td class="num">{{ row.total.toLocaleString() }}</td>
-              <td>
-                <span class="bar" style="height: 4px">
-                  <span :style="{ width: (row.direct / maxDirect) * 100 + '%' }"></span>
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="faint small" style="margin: 14px 0 0">
-          「直接下游」只数一跳邻居；「可达后代」沿关系递归，含间接继承。两者不可混用。
-        </p>
-      </div>
+        <!-- 右：指标与榜单 -->
+        <div>
+          <h2>集中度</h2>
+          <div class="grid grid-4" style="margin-bottom: 8px">
+            <div class="stat">
+              <div class="stat-label">
+                HHI（×10000）
+                <span class="tip" title="Σ(上游直接下游数 ÷ 关系总数)²，再乘 10000">ⓘ</span>
+              </div>
+              <div class="stat-value">{{ data.concentration.hhi_scaled.toFixed(1) }}</div>
+              <div class="faint small">越低越分散，10000 = 完全垄断</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">
+                Top-10 份额
+                <span class="tip" title="前 10 上游的直接下游数之和 ÷ 关系总数">ⓘ</span>
+              </div>
+              <div class="stat-value">{{ pct(data.concentration.top10_share) }}</div>
+              <div class="faint small">头部上游的集中程度</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">
+                断链率
+                <span class="tip" title="有下游、但自身属性未收录的上游占全部上游的比例">ⓘ</span>
+              </div>
+              <div class="stat-value">{{ pct(data.data_quality.ghost_ratio) }}</div>
+              <div class="faint small">
+                {{ num(data.data_quality.ghost_parent_count) }} 个上游属性未收录
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">家族</div>
+              <div class="stat-value">{{ num(data.metrics.family_count) }}</div>
+              <div class="faint small">按派生数据的 family 字段</div>
+            </div>
+          </div>
 
-      <!-- 案例 -->
-      <div v-if="data.cases.length" class="panel">
-        <h2>案例</h2>
-        <div class="case-list">
-          <button
-            v-for="item in data.cases"
-            :key="item.model_id"
-            class="case-card"
-            @click="openInLineage(item.model_id)"
+          <p
+            v-if="data.data_quality.ghost_ratio > 0.3"
+            class="alert alert-info small"
+            style="margin: 8px 0 24px"
           >
-            <strong>{{ item.title }}</strong>
-            <code class="small">{{ item.model_id }}</code>
-            <span class="muted small">{{ item.note }}</span>
-          </button>
+            断链率偏高是导入范围造成的：当前快照只收了下载量靠前的一部分模型，它们的上游大多不在集合内，
+            因此以「属性未收录」的占位节点出现。这是范围问题，不是生态缺失。
+          </p>
+
+          <!-- 榜单 -->
+          <div class="panel">
+            <div class="tabs">
+              <button :class="{ active: tab === 'upstream' }" @click="tab = 'upstream'">上游</button>
+              <button :class="{ active: tab === 'family' }" @click="tab = 'family'">家族</button>
+            </div>
+
+            <table v-if="tab === 'upstream'" class="rank-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px">#</th>
+                  <th>模型</th>
+                  <th style="width: 110px">家族</th>
+                  <th class="num" style="width: 96px">
+                    {{ metric === 'direct' ? '直接下游' : '可达后代' }}
+                  </th>
+                  <th class="num" style="width: 72px">占比</th>
+                  <th style="width: 150px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, index) in upstreamRows"
+                  :key="row.model_id"
+                  class="row-click"
+                  @click="openInLineage(row.model_id)"
+                >
+                  <td class="faint">{{ index + 1 }}</td>
+                  <td><code :title="row.model_id">{{ row.model_id }}</code></td>
+                  <td class="muted" :title="row.family ?? ''">{{ row.family ?? '—' }}</td>
+                  <td class="num">{{ (row[metric] as number).toLocaleString() }}</td>
+                  <td class="num muted">{{ pct(share(row[metric] as number, data.metrics.edge_count)) }}</td>
+                  <td>
+                    <span class="bar">
+                      <span
+                        :style="{ width: ((row[metric] as number) / maxUpstream) * 100 + '%' }"
+                      ></span>
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table v-else class="rank-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px">#</th>
+                  <th>家族</th>
+                  <th class="num" style="width: 96px">模型数</th>
+                  <th class="num" style="width: 72px">占比</th>
+                  <th style="width: 150px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, index) in familyRows" :key="row.family">
+                  <td class="faint">{{ index + 1 }}</td>
+                  <td :title="row.family">{{ row.family }}</td>
+                  <td class="num">{{ row.models.toLocaleString() }}</td>
+                  <td class="num muted">{{ pct(row.share) }}</td>
+                  <td>
+                    <span class="bar">
+                      <span :style="{ width: (row.models / maxFamily) * 100 + '%' }"></span>
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p class="faint small" style="margin: 14px 0 0">
+              <template v-if="tab === 'upstream'">
+                点任意一行可在小图中以它为根展开。「直接下游」只数一跳邻居；「可达后代」沿关系递归，
+                含间接继承，两者不可混用。
+              </template>
+              <template v-else>
+                家族按派生数据的 family 字段分组；占比分母为当前快照的模型总数
+                {{ num(data.metrics.model_count) }}。
+              </template>
+            </p>
+          </div>
+
+          <!-- 关系构成 -->
+          <div class="panel">
+            <h2>关系类型构成</h2>
+            <div v-for="row in typeRows" :key="row.type" class="bar-row">
+              <span class="label">{{ row.type }}</span>
+              <span class="bar"><span :style="{ width: row.percent + '%' }"></span></span>
+              <span class="num">{{ row.count.toLocaleString() }}</span>
+            </div>
+            <p class="faint small" style="margin: 14px 0 0">
+              按带类型的关系条数计，与上方的「唯一上下游对」是两个口径。
+            </p>
+          </div>
+
+          <!-- 指标定义 -->
+          <div class="panel">
+            <h2>指标定义</h2>
+            <table class="def-table">
+              <tbody>
+                <tr>
+                  <td><code>HHI</code></td>
+                  <td>Σ (某上游直接下游数 ÷ 关系总数)² × 10000，产业组织学常用集中度</td>
+                </tr>
+                <tr>
+                  <td><code>top10_share</code></td>
+                  <td>前 10 上游的直接下游数之和 ÷ 关系总数</td>
+                </tr>
+                <tr>
+                  <td><code>direct</code></td>
+                  <td>直接下游数：只统计一跳邻居</td>
+                </tr>
+                <tr>
+                  <td><code>total</code></td>
+                  <td>可达后代数：沿关系递归统计，含间接继承</td>
+                </tr>
+                <tr>
+                  <td><code>ghost_ratio</code></td>
+                  <td>有下游但属性未收录的上游数 ÷ 全部上游数</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="faint small" style="margin: 14px 0 0">
+              方法参考 HuggingGraph（关系类型与深度）、model-family-tree（direct / total 口径）、
+              Open Model Evolution（集中度视角）。接口定义见 <code>docs/CONTRACTS.md</code>。
+            </p>
+          </div>
         </div>
       </div>
-
-      <p class="footnote">
-        方法参考 HuggingGraph（关系类型与深度）、model-family-tree（direct / total
-        后代口径）、Open Model Evolution（集中度视角）。指标定义见
-        <code>docs/CONTRACTS.md</code>。
-      </p>
     </template>
   </section>
 </template>
