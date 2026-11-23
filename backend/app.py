@@ -23,7 +23,7 @@ from modules.analysis.router import router as analysis_router
 from modules.catalog.router import router as catalog_router
 from modules.data.router import router as data_router
 from modules.lineage.router import router as lineage_router
-from shared import config
+from shared import config, graph_read
 from shared.contracts import HealthResponse, MetaResponse
 from shared.db import connect, init_schema, tables_present
 from shared.errors import install_error_handlers
@@ -35,22 +35,15 @@ def _health() -> HealthResponse:
         if "snapshots" not in tables_present(conn):
             return HealthResponse(status="ok", data_ready=False)
         init_schema(conn)  # 幂等：缺表时补上
-        row = conn.execute(
-            """SELECT s.id AS id,
-                      (SELECT count(*) FROM models m WHERE m.snapshot_id = s.id) AS models,
-                      (SELECT count(*) FROM relations r WHERE r.snapshot_id = s.id) AS relations
-               FROM snapshots s
-               ORDER BY s.snapshot_date DESC, s.created_at DESC
-               LIMIT 1"""
-        ).fetchone()
-        if row is None:
+        snapshot_id = graph_read.default_snapshot_id(conn)
+        if snapshot_id is None:
             return HealthResponse(status="ok", data_ready=False)
         return HealthResponse(
             status="ok",
             data_ready=True,
-            snapshot_id=row["id"],
-            model_count=int(row["models"]),
-            relation_count=int(row["relations"]),
+            snapshot_id=snapshot_id,
+            model_count=graph_read.count_models(conn, snapshot_id),
+            relation_count=graph_read.count_relations(conn, snapshot_id),
         )
     except sqlite3.Error:
         return HealthResponse(status="ok", data_ready=False)

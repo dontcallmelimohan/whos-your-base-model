@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 
 import DataPage from '@/modules/data/DataPage.vue'
+import LineagePage from '@/modules/lineage/LineagePage.vue'
 import PlaceholderPage from './PlaceholderPage.vue'
 
 /**
@@ -35,12 +36,8 @@ const router = createRouter({
     {
       path: '/lineage',
       name: 'lineage',
-      component: PlaceholderPage,
-      meta: {
-        title: '供应链小图',
-        owner: 'B',
-        desc: '局部上下游展开、关系筛选、节点/边点击。组件放在 src/modules/lineage/。',
-      },
+      component: LineagePage,
+      meta: { title: '供应链小图', owner: 'B' },
     },
     {
       path: '/galaxy',

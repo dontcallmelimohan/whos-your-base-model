@@ -2,7 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 
-import { api, errorText } from '@/shared/api'
+import { api } from '@/shared/api'
+import { theme, toggleTheme } from '@/shared/theme'
 import type { Health } from '@/shared/types'
 
 const health = ref<Health | null>(null)
@@ -25,7 +26,7 @@ onMounted(refresh)
     <header class="topbar">
       <div class="brand">
         <span class="brand-title">AI 模型供应链平台</span>
-        <span class="brand-sub">Model Supply Chain</span>
+        <span class="brand-sub">model-supply-chain</span>
       </div>
 
       <nav class="nav">
@@ -42,15 +43,32 @@ onMounted(refresh)
           {{ health.snapshot_id }} · {{ health.model_count.toLocaleString() }} 模型
         </span>
         <span v-else class="badge badge-warn">无数据</span>
+
+        <button
+          class="icon-btn"
+          :title="theme === 'dark' ? '切换到亮色' : '切换到暗色'"
+          :aria-label="theme === 'dark' ? '切换到亮色' : '切换到暗色'"
+          @click="toggleTheme"
+        >
+          <svg v-if="theme === 'dark'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" stroke-linecap="round" />
+          </svg>
+          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M20.5 14.6A8.6 8.6 0 1 1 9.4 3.5a6.9 6.9 0 0 0 11.1 11.1Z" stroke-linejoin="round" />
+          </svg>
+        </button>
       </div>
     </header>
 
     <main class="content">
       <RouterView />
       <p class="footnote">
-        数据来源：hub-stats dump（Apache-2.0）· 字段口径与布局参考
+        数据来源 hub-stats（Apache-2.0）· 字段口径与界面参考
         <a href="https://github.com/h9-tec/model-family-tree" target="_blank" rel="noreferrer">model-family-tree</a>
-        （MIT）· 课程作业，非生产系统。
+        （MIT）与
+        <a href="https://huggingface.co/spaces/EQTYLab/lineage-explorer" target="_blank" rel="noreferrer">lineage-explorer</a>
+        （Apache-2.0）· 课程作业
       </p>
     </main>
   </div>

@@ -22,8 +22,13 @@ def list_snapshots(conn: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 def default_snapshot_id(conn: sqlite3.Connection) -> str | None:
+    """默认快照：日期最新，同一天则取模型更多的那个（避免样例盖掉真实数据）。"""
     row = conn.execute(
-        "SELECT id FROM snapshots ORDER BY snapshot_date DESC, created_at DESC LIMIT 1"
+        """SELECT s.id AS id FROM snapshots s
+           ORDER BY s.snapshot_date DESC,
+                    (SELECT count(*) FROM models m WHERE m.snapshot_id = s.id) DESC,
+                    s.created_at DESC
+           LIMIT 1"""
     ).fetchone()
     return row["id"] if row else None
 
