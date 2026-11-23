@@ -107,11 +107,11 @@ onMounted(loadAll)
 
 <template>
   <section>
-    <div class="row" style="justify-content: space-between; margin-bottom: 16px">
+    <div class="page-head">
       <div>
         <h1>数据管理</h1>
-        <p class="muted small" style="margin: 0">
-          导入快照、查看数据范围、核对统计口径。工作包 A 负责本页与
+        <p class="lede">
+          导入快照、核对数据范围与统计口径。工作包 A 负责本页，以及
           <code>/api/imports</code>、<code>/api/snapshots</code>、<code>/api/datasets</code>。
         </p>
       </div>
@@ -196,7 +196,7 @@ onMounted(loadAll)
         <h2>关系类型分布</h2>
         <div v-if="!typeRows.length" class="muted small">无数据</div>
         <div v-for="row in typeRows" :key="row.type" class="bar-row">
-          <span>{{ row.type }}</span>
+          <span class="label">{{ row.type }}</span>
           <span class="bar"><span :style="{ width: row.percent + '%' }"></span></span>
           <span class="num">{{ row.count.toLocaleString() }}</span>
         </div>
