@@ -99,7 +99,9 @@ def create_app() -> FastAPI:
 
         @app.get("/", include_in_schema=False)
         def index() -> FileResponse:
-            return FileResponse(dist / "index.html")
+            # 入口 HTML 必须每次回源，否则改了前端但浏览器还拿旧 index.html，
+            # 会加载到旧的 hash 资源，出现"改了没生效"的错觉
+            return FileResponse(dist / "index.html", headers={"Cache-Control": "no-cache"})
 
     return app
 

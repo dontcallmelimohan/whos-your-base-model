@@ -8,7 +8,7 @@
  * 交互：点节点 = 把它变成新的根（重新请求 + 重新布局 + 相机跟过去）。
  * 相机与节点位置都用 CSS transform 补间，所以整个过程是滑过去的。
  */
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { NODE_H, NODE_W, type Layout } from './layout'
 
@@ -101,24 +101,50 @@ function onWheel(event: WheelEvent) {
   zoom(event.deltaY > 0 ? 0.9 : 1.1)
 }
 
+/**
+ * 拖拽平移。
+ *
+ * 注意：这里**不能**用 setPointerCapture —— 一旦把指针捕获到 SVG 根节点，
+ * 后续的 click 会派发到 SVG 而不是被点的节点，节点点击就永远不触发了。
+ * 所以改为在 window 上监听 move/up，并用 4px 阈值区分「点击」和「拖拽」。
+ */
+let dragStart: { x: number; y: number } | null = null
+
 function onPointerDown(event: PointerEvent) {
-  dragging.value = { x: event.clientX, y: event.clientY }
-  ;(event.currentTarget as SVGElement).setPointerCapture?.(event.pointerId)
+  if (event.button !== 0) return
+  dragStart = { x: event.clientX, y: event.clientY }
 }
 
-function onPointerMove(event: PointerEvent) {
-  if (!dragging.value) return
-  const dx = event.clientX - dragging.value.x
-  const dy = event.clientY - dragging.value.y
+function onWindowPointerMove(event: PointerEvent) {
+  if (!dragStart) return
+  const dx = event.clientX - dragStart.x
+  const dy = event.clientY - dragStart.y
+  if (!dragging.value) {
+    if (Math.hypot(dx, dy) < 4) return // 还没到拖拽阈值，当作点击
+    dragging.value = { x: dragStart.x, y: dragStart.y }
+  }
+  const stepX = event.clientX - dragging.value.x
+  const stepY = event.clientY - dragging.value.y
   dragging.value = { x: event.clientX, y: event.clientY }
   const rect = canvasEl.value?.getBoundingClientRect()
   const ratio = VIEW_W / Math.max(rect?.width ?? VIEW_W, 1)
-  offset.value = { x: offset.value.x + dx * ratio, y: offset.value.y + dy * ratio }
+  offset.value = { x: offset.value.x + stepX * ratio, y: offset.value.y + stepY * ratio }
 }
 
-function onPointerUp() {
+function onWindowPointerUp() {
+  dragStart = null
   dragging.value = null
 }
+
+onMounted(() => {
+  window.addEventListener('pointermove', onWindowPointerMove)
+  window.addEventListener('pointerup', onWindowPointerUp)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', onWindowPointerMove)
+  window.removeEventListener('pointerup', onWindowPointerUp)
+})
 
 function shortId(id: string, max = 21): string {
   return id.length <= max ? id : `${id.slice(0, max - 1)}…`
@@ -133,9 +159,6 @@ function shortId(id: string, max = 21): string {
       class="canvas-svg"
       :class="{ dragging: !!dragging, busy: props.busy }"
       @pointerdown="onPointerDown"
-      @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointerleave="onPointerUp"
     >
       <g class="stage" :class="{ 'no-anim': !!dragging }" :style="{ transform }">
         <!-- 边 -->
